@@ -2,15 +2,14 @@ use std::marker::PhantomData;
 
 use bevy::prelude::*;
 use bevy_renet::{
-    renet::{RenetClient, RenetError, RenetServer},
+    renet::{RenetError, RenetServer},
     run_if_client_conected, RenetClientPlugin,
 };
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
 
 use crate::{
     protocol::updates::{EntityUpdate, Reliable, Unreliable},
-    replicate::physics::ReplicatePhysicsPlugin,
-    Client, Replicate, Server,
+    replicate::physics::ReplicatePhysicsPlugin, Replicate,
 };
 
 use crate::protocol::*;

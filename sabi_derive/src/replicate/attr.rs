@@ -2,16 +2,16 @@ use crate::replicate::respan::respan;
 use crate::replicate::symbol::*;
 use crate::replicate::{ungroup, Ctxt};
 
-use proc_macro2::{Spacing, Span, TokenStream, TokenTree};
+use proc_macro2::{Spacing, TokenStream, TokenTree};
 use quote::ToTokens;
-use std::borrow::Cow;
+
 use std::collections::BTreeSet;
 use syn;
 use syn::parse::{self, Parse, ParseStream};
 use syn::punctuated::Punctuated;
-use syn::Ident;
-use syn::Meta::{List, NameValue, Path};
-use syn::NestedMeta::{Lit, Meta};
+
+use syn::Meta::{List, NameValue};
+use syn::NestedMeta::{Meta};
 use syn::Token;
 
 struct Attr<'c, T> {
