@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::prelude::{Replicate};
+use crate::prelude::Replicate;
 
 use serde::{Deserialize, Serialize};
 

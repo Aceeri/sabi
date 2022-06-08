@@ -9,7 +9,8 @@ use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
 
 use crate::{
     protocol::updates::{EntityUpdate, Reliable, Unreliable},
-    replicate::physics::ReplicatePhysicsPlugin, Replicate,
+    replicate::physics::ReplicatePhysicsPlugin,
+    Replicate,
 };
 
 use crate::protocol::*;

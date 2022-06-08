@@ -11,7 +11,7 @@ use syn::parse::{self, Parse, ParseStream};
 use syn::punctuated::Punctuated;
 
 use syn::Meta::{List, NameValue};
-use syn::NestedMeta::{Meta};
+use syn::NestedMeta::Meta;
 use syn::Token;
 
 struct Attr<'c, T> {

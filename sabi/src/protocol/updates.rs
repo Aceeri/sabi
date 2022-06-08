@@ -1,23 +1,7 @@
-use bevy::{
-    prelude::*,
-    utils::{HashMap},
-};
+use bevy::{prelude::*, utils::HashMap};
 
-
-
-use std::{
-    hash::{Hasher},
-};
-
+use crate::prelude::*;
 use serde::{Deserialize, Serialize};
-
-
-
-
-
-
-
-use crate::{prelude::*};
 
 #[derive(Debug, Deref, DerefMut, Clone, Serialize, Deserialize)]
 pub struct EntityUpdate(pub HashMap<ServerEntity, ComponentsUpdate>);

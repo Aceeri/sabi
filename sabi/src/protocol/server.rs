@@ -1,26 +1,12 @@
-use bevy::{
-    prelude::*,
-};
-use bevy_renet::{
-    renet::{
-        RenetServer, ServerConfig,
-    },
-};
-
+use bevy::prelude::*;
+use bevy_renet::renet::{RenetServer, ServerConfig};
 
 use std::{
     net::{Ipv4Addr, SocketAddrV4, ToSocketAddrs, UdpSocket},
     time::Duration,
 };
 
-
-
 use std::time::SystemTime;
-
-
-
-
-
 
 use crate::protocol::*;
 

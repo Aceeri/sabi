@@ -1,33 +1,23 @@
 use bevy::{
     ecs::entity::Entities,
     prelude::*,
-    reflect::{FromReflect},
+    reflect::FromReflect,
     utils::{Entry, HashMap},
 };
-use bevy_renet::{
-    renet::{
-        BlockChannelConfig, ChannelConfig, ReliableChannelConfig,
-        RenetConnectionConfig,
-        UnreliableChannelConfig, NETCODE_KEY_BYTES,
-    },
+use bevy_renet::renet::{
+    BlockChannelConfig, ChannelConfig, ReliableChannelConfig, RenetConnectionConfig,
+    UnreliableChannelConfig, NETCODE_KEY_BYTES,
 };
-
 
 use std::{
     hash::{Hash, Hasher},
-    net::{UdpSocket},
+    net::UdpSocket,
     time::Duration,
 };
 
 use serde::{Deserialize, Serialize};
 
-
-
-
-
-
-
-use crate::{prelude::*};
+use crate::prelude::*;
 
 pub mod client;
 pub mod server;

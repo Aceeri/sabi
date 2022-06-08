@@ -1,26 +1,9 @@
-use bevy::{
-    prelude::*,
-};
-use bevy_renet::{
-    renet::{
-        ConnectToken, RenetClient,
-    },
-};
+use bevy::prelude::*;
+use bevy_renet::renet::{ConnectToken, RenetClient};
 
-
-use std::{
-    net::{ToSocketAddrs, UdpSocket},
-};
-
-
+use std::net::{ToSocketAddrs, UdpSocket};
 
 use std::time::SystemTime;
-
-
-
-
-
-
 
 use crate::protocol::*;
 

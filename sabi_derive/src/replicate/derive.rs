@@ -1,6 +1,6 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{DeriveInput};
+use syn::DeriveInput;
 
 use crate::replicate::{attr, Ctxt};
 
