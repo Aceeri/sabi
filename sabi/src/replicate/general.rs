@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::*;
 
 use crate::prelude::{Replicate, ReplicateId};
 
@@ -15,6 +14,22 @@ pub struct TransformDef {
     pub scale: Vec3,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[serde(remote = "GlobalTransform")]
+#[replicate(remote = "GlobalTransform")]
+#[replicate(crate = "crate")]
+pub struct GlobalTransformDef {
+    pub translation: Vec3,
+    pub rotation: Quat,
+    pub scale: Vec3,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[serde(remote = "Parent")]
+#[replicate(remote = "Parent")]
+#[replicate(crate = "crate")]
+pub struct ParentDef(pub Entity);
+
 impl Replicate for Name {
     type Def = String;
     fn into_def(self) -> Self::Def {
@@ -25,8 +40,5 @@ impl Replicate for Name {
     }
     fn from_def(def: Self::Def) -> Self {
         Name::new(def)
-    }
-    fn replicate_id() -> ReplicateId {
-        ReplicateId(3)
     }
 }

@@ -7,8 +7,9 @@ use bevy::{
 };
 use bevy_renet::{
     renet::{
-        ConnectToken, RenetClient, RenetConnectionConfig, RenetError, RenetServer, ServerConfig,
-        ServerEvent, NETCODE_KEY_BYTES,
+        BlockChannelConfig, ChannelConfig, ConnectToken, ReliableChannelConfig, RenetClient,
+        RenetConnectionConfig, RenetError, RenetServer, ServerConfig, ServerEvent,
+        UnreliableChannelConfig, NETCODE_KEY_BYTES,
     },
     run_if_client_conected, RenetClientPlugin, RenetServerPlugin,
 };
@@ -37,7 +38,7 @@ const PORT: u16 = 42069;
 pub const SERVER_RELIABLE: u8 = 0;
 pub const UNRELIABLE: u8 = 1;
 pub const BLOCK: u8 = 2;
-pub const COMPONENT_RELIABLE: u8 = 1;
+pub const COMPONENT_RELIABLE: u8 = 3;
 
 #[derive(Debug, Deserialize, Component, Reflect)]
 pub struct Owned;
@@ -267,6 +268,30 @@ fn localhost_addr() -> &'static str {
     return "127.0.0.1";
 }
 
+fn renet_connection_config() -> RenetConnectionConfig {
+    let mut connection_config = RenetConnectionConfig::default();
+    connection_config.channels_config = vec![
+        ChannelConfig::Reliable(ReliableChannelConfig {
+            channel_id: 0,
+            ..Default::default()
+        }),
+        ChannelConfig::Unreliable(UnreliableChannelConfig {
+            channel_id: 1,
+            ..Default::default()
+        }),
+        ChannelConfig::Block(BlockChannelConfig {
+            channel_id: 2,
+            ..Default::default()
+        }),
+        ChannelConfig::Reliable(ReliableChannelConfig {
+            channel_id: 3,
+            ..Default::default()
+        }),
+    ];
+
+    connection_config
+}
+
 fn new_renet_client() -> RenetClient {
     let server_ip = my_internet_ip::get().unwrap();
     //let server_ip = "spite.aceeri.com";
@@ -281,8 +306,8 @@ fn new_renet_client() -> RenetClient {
     let protocol_id = protocol_id();
     println!("protocol id: {:?}", protocol_id);
 
+    let connection_config = renet_connection_config();
     let socket = UdpSocket::bind((localhost_addr(), 0)).unwrap();
-    let connection_config = RenetConnectionConfig::default();
     let current_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap();
@@ -373,10 +398,7 @@ fn new_renet_server() -> RenetServer {
         .set_nonblocking(true)
         .expect("Can't set non-blocking mode");
 
-    // 0 - reliable
-    // 1 - unreliable
-    // 2 - block
-    let connection_config = RenetConnectionConfig::default();
+    let connection_config = renet_connection_config();
     let server_config = ServerConfig::new(10, protocol_id, server_addr, *PRIVATE_KEY);
     let current_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -389,7 +411,7 @@ pub struct NetworkGameTimer(pub Timer);
 
 impl Default for NetworkGameTimer {
     fn default() -> Self {
-        Self(Timer::new(Duration::from_millis(600), true))
+        Self(Timer::new(Duration::from_micros(15625), true))
     }
 }
 
@@ -427,6 +449,7 @@ impl Plugin for SabiServerPlugin {
                 .run_if(on_networktick)
                 .before("send_interests")
                 .with_system(server_queue_interest_reliable::<Transform>)
+                .with_system(server_queue_interest_reliable::<GlobalTransform>)
                 .with_system(server_queue_interest_reliable::<Velocity>)
                 .with_system(server_queue_interest_reliable::<RigidBody>)
                 .with_system(server_queue_interest_reliable::<Name>)
@@ -457,6 +480,7 @@ impl Plugin for SabiClientPlugin {
         app.add_plugin(RenetClientPlugin);
         app.add_system(client_recv_interest_reliable.with_run_criteria(run_if_client_conected));
         app.add_system(client_update_reliable::<Transform>);
+        app.add_system(client_update_reliable::<GlobalTransform>);
         app.add_system(client_update_reliable::<Velocity>);
         app.add_system(client_update_reliable::<RigidBody>);
         app.add_system(client_update_reliable::<Name>);
