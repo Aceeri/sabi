@@ -152,7 +152,6 @@ pub fn server_send_interest_reliable(
 ) {
     let data = bincode::serialize(&*updates).unwrap();
     let data = zstd::bulk::compress(&data.as_slice(), 0).unwrap();
-    info!("sending {:?} bytes", data.len());
     server.broadcast_message(COMPONENT_RELIABLE, data);
 }
 
@@ -411,7 +410,7 @@ pub struct NetworkGameTimer(pub Timer);
 
 impl Default for NetworkGameTimer {
     fn default() -> Self {
-        Self(Timer::new(Duration::from_micros(15625), true))
+        Self(Timer::new(Duration::from_micros(15625 * 4), true))
     }
 }
 
