@@ -227,8 +227,19 @@ pub struct NetworkGameTimer(pub Timer);
 impl Default for NetworkGameTimer {
     fn default() -> Self {
         // 16Hz
-        Self(Timer::new(Duration::from_micros(15625 * 4), true))
+        Self(Timer::new(tick_hz(32), true))
     }
+}
+
+impl NetworkGameTimer {
+    pub fn new(tick_rate: Duration) -> Self {
+        Self(Timer::new(tick_rate, true))
+    }
+}
+
+/// Quick function for getting a duration for tick rates.
+pub const fn tick_hz(rate: u64) -> Duration {
+    Duration::from_nanos(1_000_000_000 / rate)
 }
 
 pub fn tick_network(time: Res<Time>, mut network_timer: ResMut<NetworkGameTimer>) {

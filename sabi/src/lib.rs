@@ -17,7 +17,7 @@ pub struct Client;
 pub struct Server;
 
 pub mod prelude {
-    pub use crate::protocol::{Lobby, Owned, ServerEntities, ServerEntity, ServerMessage};
+    pub use crate::protocol::{tick_hz, Lobby, Owned, ServerEntities, ServerEntity, ServerMessage};
 
     pub use crate::plugin::{ReplicatePlugin, SabiPlugin};
     pub use crate::replicate::{Replicate, ReplicateId};

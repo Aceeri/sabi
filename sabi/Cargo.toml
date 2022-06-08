@@ -4,7 +4,7 @@ name = "sabi"
 version = "0.1.0"
 
 [lib]
-src = "lib.rs"
+path = "src/lib.rs"
 
 [dependencies]
 sabi_derive = {path = "../sabi_derive"}

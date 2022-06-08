@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{marker::PhantomData, time::Duration};
 
 use bevy::prelude::*;
 use bevy_renet::{
@@ -46,7 +46,19 @@ where
     }
 }
 
-pub struct SabiPlugin;
+#[derive(Debug, Clone)]
+pub struct SabiPlugin {
+    pub tick_rate: Duration,
+}
+
+impl Default for SabiPlugin {
+    fn default() -> Self {
+        Self {
+            // 16Hz
+            tick_rate: Duration::from_micros(15625 * 4),
+        }
+    }
+}
 
 impl Plugin for SabiPlugin {
     fn build(&self, app: &mut App) {
@@ -59,7 +71,7 @@ impl Plugin for SabiPlugin {
         app.insert_resource(Unreliable::<EntityUpdate>(EntityUpdate::new()));
 
         app.insert_resource(Lobby::default());
-        app.insert_resource(NetworkGameTimer::default());
+        app.insert_resource(NetworkGameTimer::new(self.tick_rate));
 
         app.add_plugin(ReplicatePhysicsPlugin);
 
@@ -78,8 +90,6 @@ pub struct SabiServerPlugin;
 
 impl Plugin for SabiServerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(SabiPlugin);
-
         app.insert_resource(crate::protocol::new_renet_server());
 
         app.add_plugin(bevy_renet::RenetServerPlugin);
@@ -104,15 +114,10 @@ pub struct SabiClientPlugin;
 
 impl Plugin for SabiClientPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(SabiPlugin);
-
         app.insert_resource(new_renet_client());
         app.add_plugin(RenetClientPlugin);
 
         app.add_system(client_recv_interest_reliable.with_run_criteria(run_if_client_conected));
-        app.add_system(client_update_reliable::<Transform>);
-        app.add_system(client_update_reliable::<GlobalTransform>);
-        app.add_system(client_update_reliable::<Name>);
     }
 }
 
