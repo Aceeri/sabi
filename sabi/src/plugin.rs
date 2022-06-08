@@ -68,6 +68,9 @@ impl Plugin for SabiPlugin {
         app.add_plugin(ReplicatePlugin::<Transform>::default());
         app.add_plugin(ReplicatePlugin::<GlobalTransform>::default());
         app.add_plugin(ReplicatePlugin::<Name>::default());
+
+        app.insert_resource(PreviousRenetError(None));
+        app.add_system(log_on_error_system);
     }
 }
 
@@ -110,9 +113,6 @@ impl Plugin for SabiClientPlugin {
         app.add_system(client_update_reliable::<Transform>);
         app.add_system(client_update_reliable::<GlobalTransform>);
         app.add_system(client_update_reliable::<Name>);
-
-        app.insert_resource(PreviousRenetError(None));
-        app.add_system(log_on_error_system);
     }
 }
 
