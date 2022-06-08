@@ -54,8 +54,7 @@ pub struct SabiPlugin {
 impl Default for SabiPlugin {
     fn default() -> Self {
         Self {
-            // 16Hz
-            tick_rate: Duration::from_micros(15625 * 4),
+            tick_rate: tick_hz(32),
         }
     }
 }
