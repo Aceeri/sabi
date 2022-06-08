@@ -63,9 +63,6 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream, Vec<syn::Error>> {
                 fn from_def(def: Self::Def) -> Self {
                     #from_def
                 }
-                fn replicate_id() -> #sabi_path::ReplicateId {
-                    #sabi_path::ReplicateId(0)
-                }
             }
         };
     })
