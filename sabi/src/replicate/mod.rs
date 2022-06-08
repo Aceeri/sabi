@@ -6,8 +6,8 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 
-mod general;
-mod physics;
+pub mod general;
+pub mod physics;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ReplicateId(pub u64);

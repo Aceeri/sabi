@@ -29,10 +29,22 @@ use std::f32::consts::TAU;
 
 use bevy_rapier3d::prelude::*;
 
-use crate::prelude::*;
+use crate::{prelude::*, replicate::physics::ReplicatePhysicsPlugin};
 
-const PRIVATE_KEY: &[u8; NETCODE_KEY_BYTES] = b"JKS$C14tDvez8trgbdZcIuU&wz#OjG&3"; // 32-bytes
-const PORT: u16 = 42069;
+pub mod client;
+pub mod server;
+pub mod updates;
+
+pub use client::*;
+pub use server::*;
+pub use updates::{ComponentsUpdate, EntityUpdate, Reliable, Unreliable};
+
+/// Private key for signing connect tokens for clients.
+///
+/// This should be changed and not generated in the code here, instead used via a
+/// matchmaking server/relay.
+pub const PRIVATE_KEY: &[u8; NETCODE_KEY_BYTES] = b"JKS$C14tDvez8trgbdZcIuU&wz#OjG&3"; // 32-bytes
+pub const PORT: u16 = 42069;
 
 /// Channel IDs
 pub const SERVER_RELIABLE: u8 = 0;
@@ -40,14 +52,21 @@ pub const UNRELIABLE: u8 = 1;
 pub const BLOCK: u8 = 2;
 pub const COMPONENT_RELIABLE: u8 = 3;
 
+/// If we see this component we have control over this entity.
+///
+/// The server should have `Owned` on most things while the client should have it on just a few.
+/// Mainly so the client can predict things like their character moving.
 #[derive(Debug, Deserialize, Component, Reflect)]
 pub struct Owned;
 
+/// Renet Client ID -> Player Character Entity mapping
 #[derive(Debug, Default)]
 pub struct Lobby {
     pub players: HashMap<u64, Entity>,
 }
 
+/// Reliable protocol from the server to the clients for communicating the
+/// overall gamestate and assigning what the clients should predict.
 #[derive(Debug, Serialize, Deserialize, Component)]
 pub enum ServerMessage {
     SetPlayer { id: u64, entity: ServerEntity },
@@ -62,6 +81,13 @@ impl ServerMessage {
     }
 }
 
+/// A unique identifier that is used to refer to entities across:
+/// server and client boundaries.
+///
+/// In this case it is *literally* just the server's `Entity`,
+/// since that will give us generational indexing without us doing much.
+///
+/// This won't work for P2P kinds of games but for our case its fine.
 #[derive(
     Default,
     Debug,
@@ -93,109 +119,9 @@ impl From<Entity> for ServerEntity {
     }
 }
 
-#[derive(Debug, Deref, DerefMut, Clone, Serialize, Deserialize)]
-pub struct EntityUpdate(HashMap<ServerEntity, ComponentsUpdate>);
-
-impl EntityUpdate {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-
-    pub fn clear(&mut self) {
-        self.0.clear();
-    }
-}
-
-/// Thin wrapper type to differentiate between reliable and unreliable components.
+/// Authoritative mapping of server entities to entities for clients.
 ///
-/// Reliable means that we probably aren't going to be updating it that often and we don't care as much about the latency.
-/// Unreliable means that we are probably updating it extremely frequently.
-#[derive(Debug, Deref, DerefMut, Clone, Serialize, Deserialize)]
-pub struct Reliable<T>(pub T);
-
-#[derive(Debug, Deref, DerefMut, Clone, Serialize, Deserialize)]
-pub struct Unreliable<T>(pub T);
-
-#[derive(Default, Deref, DerefMut, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ComponentsUpdate(HashMap<ReplicateId, Vec<u8>>);
-
-impl ComponentsUpdate {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-}
-
-pub fn server_clear_reliable_queue(mut updates: ResMut<Reliable<EntityUpdate>>) {
-    updates.clear();
-}
-
-pub fn server_queue_interest_reliable<C>(
-    mut updates: ResMut<Reliable<EntityUpdate>>,
-    query: Query<(Entity, &C)>,
-) where
-    C: 'static + Send + Sync + Component + Replicate + Clone,
-{
-    for (entity, component) in query.iter() {
-        let server_entity = ServerEntity::from_entity(entity);
-        let component_def = component.clone().into_def();
-        let component_data = bincode::serialize(&component_def).unwrap();
-        let update = updates
-            .entry(server_entity)
-            .or_insert(ComponentsUpdate::new());
-        update.insert(C::replicate_id(), component_data);
-    }
-}
-
-pub fn server_send_interest_reliable(
-    updates: Res<Reliable<EntityUpdate>>,
-    mut server: ResMut<RenetServer>,
-) {
-    let data = bincode::serialize(&*updates).unwrap();
-    let data = zstd::bulk::compress(&data.as_slice(), 0).unwrap();
-    server.broadcast_message(COMPONENT_RELIABLE, data);
-}
-
-pub fn client_recv_interest_reliable(
-    mut commands: Commands,
-    mut server_entities: ResMut<ServerEntities>,
-    mut update_events: EventWriter<(ServerEntity, ComponentsUpdate)>,
-    mut client: ResMut<RenetClient>,
-) {
-    while let Some(message) = client.receive_message(COMPONENT_RELIABLE) {
-        let decompressed = zstd::bulk::decompress(&message.as_slice(), 1024).unwrap();
-        let data: Reliable<EntityUpdate> = bincode::deserialize(&decompressed).unwrap();
-
-        for (server_entity, _) in data.iter() {
-            server_entities.spawn_or_get(&mut commands, *server_entity);
-        }
-
-        update_events.send_batch(data.0 .0.into_iter());
-    }
-}
-
-pub fn client_update_reliable<C>(
-    mut commands: Commands,
-    mut server_entities: ResMut<ServerEntities>,
-    mut update_events: EventReader<(ServerEntity, ComponentsUpdate)>,
-    mut query: Query<&mut C>,
-) where
-    C: 'static + Send + Sync + Component + Replicate,
-{
-    for (server_entity, components_update) in update_events.iter() {
-        if let Some(update_data) = components_update.get(&C::replicate_id()) {
-            let def: <C as Replicate>::Def = bincode::deserialize(&update_data).unwrap();
-            let entity = server_entities.spawn_or_get(&mut commands, *server_entity);
-
-            if let Ok(mut component) = query.get_mut(entity) {
-                component.apply_def(def);
-            } else {
-                let component = C::from_def(def);
-                commands.entity(entity).insert(component);
-            }
-        }
-    }
-}
-
+/// This is so clients can figure out which entity the server is talking about.
 #[derive(Default, Debug, Clone)]
 pub struct ServerEntities(HashMap<ServerEntity, Entity>);
 
@@ -236,18 +162,20 @@ impl ServerEntities {
     }
 }
 
-impl Reliable<EntityUpdate> {
-    pub fn protocol_id() -> u64 {
-        1
-    }
+/// Local ip to bind to so we can have others connect.
+///
+/// Windows is weird here and doesn't let you do it on `localhost`/`127.0.0.1`
+///
+/// So instead we have a `0.0.0.0` address which is kind of like saying we'll take
+/// any address.
+pub fn localhost_ip() -> &'static str {
+    #[cfg(target_family = "windows")]
+    return "0.0.0.0";
+    #[cfg(target_family = "unix")]
+    return "127.0.0.1";
 }
 
-impl Unreliable<EntityUpdate> {
-    pub fn protocol_id() -> u64 {
-        1
-    }
-}
-
+/// Protocol identifier so we have more obvious breakage when we change the protocol.
 pub fn protocol_id() -> u64 {
     let concat = format!(
         "server:{};unreliable:{};reliable:{}",
@@ -260,14 +188,7 @@ pub fn protocol_id() -> u64 {
     s.finish()
 }
 
-fn localhost_addr() -> &'static str {
-    #[cfg(target_family = "windows")]
-    return "0.0.0.0";
-    #[cfg(target_family = "unix")]
-    return "127.0.0.1";
-}
-
-fn renet_connection_config() -> RenetConnectionConfig {
+pub fn renet_connection_config() -> RenetConnectionConfig {
     let mut connection_config = RenetConnectionConfig::default();
     connection_config.channels_config = vec![
         ChannelConfig::Reliable(ReliableChannelConfig {
@@ -291,45 +212,11 @@ fn renet_connection_config() -> RenetConnectionConfig {
     connection_config
 }
 
-fn new_renet_client() -> RenetClient {
-    let server_ip = my_internet_ip::get().unwrap();
-    //let server_ip = "spite.aceeri.com";
-    //let server_ip = "72.134.64.107";
-    let server_addr = format!("{}:{}", server_ip, PORT)
-        .to_socket_addrs()
-        .unwrap()
-        .next()
-        .unwrap();
-
-    println!("server addr: {:?}", server_addr);
-    let protocol_id = protocol_id();
-    println!("protocol id: {:?}", protocol_id);
-
-    let connection_config = renet_connection_config();
-    let socket = UdpSocket::bind((localhost_addr(), 0)).unwrap();
-    let current_time = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap();
-    let client_id = current_time.as_millis() as u64;
-    // This connect token should come from another system, NOT generated from the client.
-    // Usually from a matchmaking system
-    // The client should not have access to the PRIVATE_KEY from the server.
-    let token = ConnectToken::generate(
-        current_time,
-        protocol_id,
-        300,
-        client_id,
-        15,
-        vec![server_addr],
-        None,
-        PRIVATE_KEY,
-    )
-    .unwrap();
-    RenetClient::new(current_time, socket, client_id, token, connection_config).unwrap()
-}
-
-fn get_local_ipaddress() -> Option<String> {
-    let socket = match UdpSocket::bind((localhost_addr(), 0)) {
+/// Fetch our external ip using Cloudflare's DNS resolver.
+///
+/// We need this for verifying that connections from clients are valid
+pub fn public_ip() -> Option<String> {
+    let socket = match UdpSocket::bind((localhost_ip(), 0)) {
         Ok(s) => s,
         Err(_) => return None,
     };
@@ -345,71 +232,13 @@ fn get_local_ipaddress() -> Option<String> {
     };
 }
 
-fn new_renet_server() -> RenetServer {
-    let local_ip = get_local_ipaddress().unwrap_or(localhost_addr().to_owned());
-    let port = 42069;
-
-    match igd::search_gateway(igd::SearchOptions {
-        timeout: Some(Duration::from_secs(1)),
-        ..Default::default()
-    }) {
-        Err(ref err) => println!("Error: {}", err),
-        Ok(gateway) => {
-            let local_addr = local_ip.parse::<Ipv4Addr>().unwrap();
-            let local_addr = SocketAddrV4::new(local_addr, port);
-
-            match gateway.add_port(
-                igd::PortMappingProtocol::UDP,
-                port,
-                local_addr,
-                0,
-                "add_port example",
-            ) {
-                Err(ref err) => {
-                    println!("There was an error! {}", err);
-                }
-                Ok(()) => {
-                    println!("It worked");
-                }
-            }
-        }
-    }
-
-    let server_ip = my_internet_ip::get().unwrap();
-    let server_addr = format!("{}:{}", server_ip, PORT)
-        .to_socket_addrs()
-        .unwrap()
-        .next()
-        .unwrap();
-
-    let local_addr = format!("{}:{}", local_ip, PORT)
-        .to_socket_addrs()
-        .unwrap()
-        .next()
-        .unwrap();
-
-    println!("binding to {:?}", server_addr);
-    let protocol_id = protocol_id();
-    println!("protocol id: {:?}", protocol_id,);
-
-    let socket = UdpSocket::bind(local_addr).unwrap();
-    socket
-        .set_nonblocking(true)
-        .expect("Can't set non-blocking mode");
-
-    let connection_config = renet_connection_config();
-    let server_config = ServerConfig::new(10, protocol_id, server_addr, *PRIVATE_KEY);
-    let current_time = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap();
-    RenetServer::new(current_time, server_config, connection_config, socket).unwrap()
-}
-
+/// Tick rate of the network sending/receiving
 #[derive(Deref, DerefMut, Debug, Clone)]
 pub struct NetworkGameTimer(pub Timer);
 
 impl Default for NetworkGameTimer {
     fn default() -> Self {
+        // 16Hz
         Self(Timer::new(Duration::from_micros(15625 * 4), true))
     }
 }
@@ -418,78 +247,6 @@ pub fn tick_network(time: Res<Time>, mut network_timer: ResMut<NetworkGameTimer>
     network_timer.tick(time.delta());
 }
 
-pub fn on_networktick(network_timer: Res<NetworkGameTimer>) -> bool {
+pub fn on_network_tick(network_timer: Res<NetworkGameTimer>) -> bool {
     network_timer.just_finished()
-}
-
-pub struct SabiServerPlugin;
-
-impl Plugin for SabiServerPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_type::<ServerEntity>();
-
-        app.insert_resource(Lobby::default());
-        app.insert_resource(Reliable::<EntityUpdate>(EntityUpdate::new()));
-        app.insert_resource(Unreliable::<EntityUpdate>(EntityUpdate::new()));
-        app.insert_resource(new_renet_server());
-
-        app.add_plugin(RenetServerPlugin);
-
-        app.insert_resource(NetworkGameTimer::default());
-        app.add_system(tick_network);
-
-        app.add_system(
-            server_send_interest_reliable
-                .run_if(on_networktick)
-                .label("send_interests"),
-        );
-        app.add_system_set(
-            ConditionSet::new()
-                .run_if(on_networktick)
-                .before("send_interests")
-                .with_system(server_queue_interest_reliable::<Transform>)
-                .with_system(server_queue_interest_reliable::<GlobalTransform>)
-                .with_system(server_queue_interest_reliable::<Velocity>)
-                .with_system(server_queue_interest_reliable::<RigidBody>)
-                .with_system(server_queue_interest_reliable::<Name>)
-                .into(),
-        );
-
-        app.add_system(
-            server_clear_reliable_queue
-                .run_if(on_networktick)
-                .after("send_interests"),
-        );
-        app.add_system(log_on_error_system);
-    }
-}
-
-pub struct SabiClientPlugin;
-
-impl Plugin for SabiClientPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_type::<ServerEntity>();
-
-        app.add_event::<(ServerEntity, ComponentsUpdate)>();
-
-        app.insert_resource(Lobby::default());
-        app.insert_resource(ServerEntities::default());
-        app.insert_resource(new_renet_client());
-
-        app.add_plugin(RenetClientPlugin);
-        app.add_system(client_recv_interest_reliable.with_run_criteria(run_if_client_conected));
-        app.add_system(client_update_reliable::<Transform>);
-        app.add_system(client_update_reliable::<GlobalTransform>);
-        app.add_system(client_update_reliable::<Velocity>);
-        app.add_system(client_update_reliable::<RigidBody>);
-        app.add_system(client_update_reliable::<Name>);
-
-        app.add_system(log_on_error_system);
-    }
-}
-
-fn log_on_error_system(mut renet_error: EventReader<RenetError>) {
-    for renet_error in renet_error.iter() {
-        error!("renet: {:?}", renet_error);
-    }
 }
