@@ -3,7 +3,7 @@ use bevy_rapier3d::prelude::*;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Replicate, ReplicateId};
+use crate::Replicate;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
 #[serde(remote = "RigidBody")]
