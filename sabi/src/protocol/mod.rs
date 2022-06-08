@@ -44,7 +44,7 @@ pub struct Owned;
 
 #[derive(Debug, Default)]
 pub struct Lobby {
-    players: HashMap<u64, Entity>,
+    pub players: HashMap<u64, Entity>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Component)]

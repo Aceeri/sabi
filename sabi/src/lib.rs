@@ -11,7 +11,8 @@ pub mod replicate;
 
 pub mod prelude {
     pub use crate::protocol::{
-        Owned, SabiClientPlugin, SabiServerPlugin, ServerEntities, ServerEntity, ServerMessage,
+        Lobby, Owned, SabiClientPlugin, SabiServerPlugin, ServerEntities, ServerEntity,
+        ServerMessage,
     };
 
     pub use crate::replicate::{Replicate, ReplicateId};
