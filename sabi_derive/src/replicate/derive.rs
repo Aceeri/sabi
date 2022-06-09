@@ -36,6 +36,8 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream, Vec<syn::Error>> {
         None
     };
 
+    let generics = input.generics;
+
     let (sabi_path, sabi_crate) = match attr.sabi_path {
         Some(path) => (quote! { #path }, None),
         None => (
@@ -55,7 +57,7 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream, Vec<syn::Error>> {
         const _: () = {
             #sabi_crate
 
-            impl #sabi_path::Replicate for #base_ident {
+            impl #generics #sabi_path::Replicate for #base_ident #generics {
                 type Def = #def;
                 fn into_def(self) -> Self::Def {
                     #into_def
