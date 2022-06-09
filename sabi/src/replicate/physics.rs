@@ -9,7 +9,7 @@ pub struct ReplicatePhysicsPlugin;
 impl Plugin for ReplicatePhysicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(ReplicatePlugin::<RigidBody>::default());
-        //app.add_plugin(ReplicatePlugin::<Velocity>::default());
+        app.add_plugin(ReplicatePlugin::<Velocity>::default());
         app.add_plugin(ReplicatePlugin::<MassProperties>::default());
         app.add_plugin(ReplicatePlugin::<AdditionalMassProperties>::default());
         app.add_plugin(ReplicatePlugin::<LockedAxes>::default());
