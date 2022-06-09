@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 
+pub mod collider;
 pub mod general;
 pub mod physics;
 
