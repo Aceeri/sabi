@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_rapier3d::prelude::*;
+use bevy_rapier3d::{prelude::*, rapier::prelude::SharedShape};
 
 use serde::{Deserialize, Serialize};
 
@@ -25,6 +25,8 @@ impl Plugin for ReplicatePhysicsPlugin {
         app.add_plugin(ReplicatePlugin::<Sensor>::default());
         app.add_plugin(ReplicatePlugin::<CollisionGroups>::default());
         app.add_plugin(ReplicatePlugin::<SolverGroups>::default());
+        app.add_plugin(ReplicatePlugin::<Collider>::default());
+        app.add_plugin(ReplicatePlugin::<ColliderScale>::default());
     }
 }
 
@@ -198,4 +200,23 @@ pub struct CollisionGroupsDef {
 pub struct SolverGroupsDef {
     pub memberships: u32,
     pub filters: u32,
+}
+
+impl Replicate for Collider {
+    type Def = SharedShape;
+    fn into_def(self) -> Self::Def {
+        self.raw
+    }
+    fn from_def(shared_shape: Self::Def) -> Self {
+        Collider::from(shared_shape)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[serde(remote = "ColliderScale")]
+#[replicate(remote = "ColliderScale")]
+#[replicate(crate = "crate")]
+pub enum ColliderScaleDef {
+    Relative(Vec3),
+    Absolute(Vec3),
 }
