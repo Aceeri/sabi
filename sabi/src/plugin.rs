@@ -2,7 +2,7 @@ use std::{marker::PhantomData, time::Duration};
 
 use bevy::prelude::*;
 use bevy_renet::{
-    renet::{RenetError, RenetServer},
+    renet::{RenetClient, RenetError, RenetServer},
     run_if_client_conected, RenetClientPlugin,
 };
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
@@ -33,16 +33,21 @@ where
     C: 'static + Send + Sync + Component + Replicate + Clone,
 {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            crate::protocol::server_queue_interest_reliable::<C>
-                .run_if(crate::protocol::on_network_tick)
-                .run_if_resource_exists::<RenetServer>()
-                .before("send_interests"),
-        );
+        if app.world.contains_resource::<RenetServer>() {
+            app.add_system(
+                crate::protocol::server_queue_interest_reliable::<C>
+                    .run_if(crate::protocol::on_network_tick)
+                    .run_if_resource_exists::<RenetServer>()
+                    .before("send_interests"),
+            );
+        }
 
-        app.add_system(
-            crate::protocol::client_update_reliable::<C>.with_run_criteria(run_if_client_conected),
-        );
+        if app.world.contains_resource::<RenetClient>() {
+            app.add_system(
+                crate::protocol::client_update_reliable::<C>
+                    .with_run_criteria(run_if_client_conected),
+            );
+        }
     }
 }
 

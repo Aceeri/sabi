@@ -50,7 +50,7 @@ pub fn client_recv_interest_reliable(
     mut client: ResMut<RenetClient>,
 ) {
     while let Some(message) = client.receive_message(COMPONENT_RELIABLE) {
-        let decompressed = zstd::bulk::decompress(&message.as_slice(), 1024).unwrap();
+        let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
         let data: Reliable<EntityUpdate> = bincode::deserialize(&decompressed).unwrap();
 
         for (server_entity, _) in data.iter() {

@@ -115,5 +115,7 @@ pub fn server_send_interest_reliable(
 ) {
     let data = bincode::serialize(&*updates).unwrap();
     let data = zstd::bulk::compress(&data.as_slice(), 0).unwrap();
+
+    info!("sending {:?} bytes", data.len());
     server.broadcast_message(COMPONENT_RELIABLE, data);
 }
