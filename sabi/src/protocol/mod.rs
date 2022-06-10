@@ -191,7 +191,7 @@ pub fn renet_connection_config() -> RenetConnectionConfig {
             channel_id: 2,
             ..Default::default()
         }),
-        ChannelConfig::Reliable(ReliableChannelConfig {
+        ChannelConfig::Unreliable(UnreliableChannelConfig {
             channel_id: 3,
             ..Default::default()
         }),
