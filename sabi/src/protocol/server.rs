@@ -109,13 +109,60 @@ pub fn server_queue_interest_reliable<C>(
     }
 }
 
+#[derive(Debug, Clone, Deref, DerefMut)]
+pub struct SentBytes(usize);
+
+impl SentBytes {
+    pub fn new() -> Self {
+        Self(0)
+    }
+
+    pub fn clear(&mut self) {
+        self.0 = 0;
+    }
+
+    pub fn add(&mut self, bytes: usize) {
+        self.0 += bytes;
+    }
+}
+
+#[derive(Debug, Clone, Deref, DerefMut)]
+pub struct BandwidthTimer(Timer);
+
+impl BandwidthTimer {
+    pub fn new() -> Self {
+        Self(Timer::new(Duration::from_secs(1), true))
+    }
+}
+
+pub fn display_server_bandwidth(
+    time: Res<Time>,
+    //mut sent_bytes: ResMut<SentBytes>,
+    lobby: Res<Lobby>,
+    mut timer: ResMut<BandwidthTimer>,
+    mut server: ResMut<RenetServer>,
+) {
+    timer.tick(time.delta());
+
+    if timer.just_finished() {
+        for client_id in lobby.players.keys() {
+            info!(
+                "network_info ({}): {:?}",
+                client_id,
+                server.network_info(*client_id)
+            );
+        }
+    }
+}
+
 pub fn server_send_interest_reliable(
     updates: Res<Reliable<EntityUpdate>>,
+    mut sent: ResMut<SentBytes>,
     mut server: ResMut<RenetServer>,
 ) {
     let data = bincode::serialize(&*updates).unwrap();
     let data = zstd::bulk::compress(&data.as_slice(), 0).unwrap();
 
-    //debug!("sending {:?} bytes", data.len());
+    sent.add(data.len());
     server.broadcast_message(COMPONENT_RELIABLE, data);
 }

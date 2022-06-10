@@ -105,6 +105,10 @@ impl Plugin for SabiServerPlugin {
                 .label("send_interests"),
         );
 
+        app.insert_resource(SentBytes::new());
+        app.insert_resource(BandwidthTimer::new());
+        app.add_system(display_server_bandwidth);
+
         app.add_system(
             server_clear_reliable_queue
                 .run_if(on_network_tick)
