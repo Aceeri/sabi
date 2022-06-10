@@ -148,6 +148,15 @@ impl ServerEntities {
 
         dead.len() > 0
     }
+
+    /// Despawn any server entities
+    pub fn disconnect(&mut self, entities: &Entities, commands: &mut Commands) {
+        for (_server_entity, entity) in self.0.drain() {
+            if entities.contains(entity) {
+                commands.entity(entity).despawn_recursive();
+            }
+        }
+    }
 }
 
 /// Local ip to bind to so we can have others connect.
