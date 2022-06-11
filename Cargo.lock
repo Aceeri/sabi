@@ -421,7 +421,7 @@ dependencies = [
 [[package]]
 name = "bevy_rapier3d"
 version = "0.14.1"
-source = "git+https://github.com/aceeri/bevy_rapier?branch=serialize-joints#b67f5697f540f1add53530e1530e66e67c205bad"
+source = "git+https://github.com/aceeri/bevy_rapier?branch=temp-for-usage#d075e91083815ca3c0115db0d5c057c84470428d"
 dependencies = [
  "bevy",
  "bitflags",

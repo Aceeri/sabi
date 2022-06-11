@@ -6,6 +6,9 @@ use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deref, DerefMut, Clone, Serialize, Deserialize)]
+pub struct ClientEntityUpdate(pub HashMap<u64, EntityUpdate>);
+
+#[derive(Deref, DerefMut, Clone, Serialize, Deserialize)]
 pub struct EntityUpdate(pub HashMap<ServerEntity, ComponentsUpdate>);
 
 impl fmt::Debug for EntityUpdate {
