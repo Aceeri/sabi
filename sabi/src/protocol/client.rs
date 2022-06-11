@@ -49,15 +49,15 @@ pub fn client_recv_interest_reliable(
     mut update_events: EventWriter<(ServerEntity, ComponentsUpdate)>,
     mut client: ResMut<RenetClient>,
 ) {
-    while let Some(message) = client.receive_message(COMPONENT_RELIABLE) {
+    while let Some(message) = client.receive_message(COMPONENT) {
         let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
-        let data: Reliable<EntityUpdate> = bincode::deserialize(&decompressed).unwrap();
+        let data: EntityUpdate = bincode::deserialize(&decompressed).unwrap();
 
         for (server_entity, _) in data.iter() {
             server_entities.spawn_or_get(&mut commands, *server_entity);
         }
 
-        update_events.send_batch(data.0 .0.into_iter());
+        update_events.send_batch(data.0.into_iter());
     }
 }
 

@@ -8,9 +8,7 @@ use bevy_renet::{
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
 
 use crate::{
-    protocol::updates::{EntityUpdate, Reliable, Unreliable},
-    replicate::physics::ReplicatePhysicsPlugin,
-    Replicate,
+    protocol::updates::EntityUpdate, replicate::physics::ReplicatePhysicsPlugin, Replicate,
 };
 
 use crate::protocol::*;
@@ -35,10 +33,25 @@ where
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<RenetServer>() {
             app.add_system(
-                crate::protocol::server_queue_interest_reliable::<C>
+                crate::protocol::server_queue_interest::<C>
                     .run_if(crate::protocol::on_network_tick)
                     .run_if_resource_exists::<RenetServer>()
-                    .before("send_interests"),
+                    .before("send_interests")
+                    .after("fetch_priority"),
+            );
+
+            app.add_system(
+                crate::protocol::server_bump_all::<C>
+                    .run_if(crate::protocol::on_network_tick)
+                    .run_if_resource_exists::<RenetServer>()
+                    .before("fetch_priority"),
+            );
+
+            app.add_system(
+                crate::protocol::server_bump_changed::<C>
+                    .run_if(crate::protocol::on_network_tick)
+                    .run_if_resource_exists::<RenetServer>()
+                    .before("fetch_priority"),
             );
         }
 
@@ -71,8 +84,7 @@ impl Plugin for SabiPlugin {
         app.add_event::<(ServerEntity, ComponentsUpdate)>();
 
         app.insert_resource(ServerEntities::default());
-        app.insert_resource(Reliable::<EntityUpdate>(EntityUpdate::new()));
-        app.insert_resource(Unreliable::<EntityUpdate>(EntityUpdate::new()));
+        app.insert_resource(EntityUpdate::new());
 
         app.insert_resource(Lobby::default());
         app.insert_resource(NetworkGameTimer::new(self.tick_rate));
@@ -95,22 +107,31 @@ pub struct SabiServerPlugin;
 impl Plugin for SabiServerPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(crate::protocol::new_renet_server());
+        app.insert_resource(PriorityAccumulator::new());
+        app.insert_resource(ReplicateSizeEstimates::new());
+        app.insert_resource(ReplicateMaxSize::default());
+        app.insert_resource(ComponentsToSend::new());
 
         app.add_plugin(bevy_renet::RenetServerPlugin);
 
         app.add_system(
-            server_send_interest_reliable
+            fetch_top_priority
+                .run_if_resource_exists::<RenetServer>()
+                .run_if(on_network_tick)
+                .label("fetch_priority"),
+        );
+        app.add_system(
+            server_send_interest
                 .run_if_resource_exists::<RenetServer>()
                 .run_if(on_network_tick)
                 .label("send_interests"),
         );
 
-        app.insert_resource(SentBytes::new());
         app.insert_resource(BandwidthTimer::new());
         app.add_system(display_server_bandwidth);
 
         app.add_system(
-            server_clear_reliable_queue
+            server_clear_queue
                 .run_if(on_network_tick)
                 .after("send_interests"),
         );

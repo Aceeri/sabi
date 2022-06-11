@@ -52,10 +52,14 @@ impl ReplicateTypes {
         let types = self
             .0
             .iter()
-            .map(|(key, value)| format!("\"{}\"={}\n", key, value))
+            .map(|(key, value)| format!("\"{}\" = {}\n", key, value))
             .collect::<String>();
 
         format!("[replicate]\n{}", types)
+    }
+
+    pub fn next_id(&self) -> u16 {
+        self.0.iter().map(|(_name, ty)| ty).max().unwrap_or(&0) + 1
     }
 }
 
@@ -110,7 +114,7 @@ where
 
                 info!("adding new type to types.toml: {}", long_id);
                 let mut write_lock = TYPES.write().expect("could not write short id");
-                let next_id = write_lock.replicate.0.values().max().cloned().unwrap_or(0) + 1;
+                let next_id = write_lock.replicate.next_id();
                 write_lock.replicate.0.insert(long_id, next_id);
                 drop(write_lock);
 

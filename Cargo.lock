@@ -421,7 +421,7 @@ dependencies = [
 [[package]]
 name = "bevy_rapier3d"
 version = "0.14.1"
-source = "git+https://github.com/aceeri/bevy_rapier?branch=temp-for-usage#d075e91083815ca3c0115db0d5c057c84470428d"
+source = "git+https://github.com/aceeri/bevy_rapier?branch=temp-for-usage#4cf1cb120e31946ec2c325a59e32b53343d4c057"
 dependencies = [
  "bevy",
  "bitflags",
@@ -2181,9 +2181,9 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "semver"
-version = "1.0.9"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cb243bdfdb5936c8dc3c45762a19d12ab4550cdc753bc247637d4ec35a040fd"
+checksum = "a41d061efea015927ac527063765e73601444cdc344ba855bc7bd44578b25e1c"
 
 [[package]]
 name = "serde"
@@ -2386,9 +2386,9 @@ dependencies = [
 
 [[package]]
 name = "tracing"
-version = "0.1.34"
+version = "0.1.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d0ecdcb44a79f0fe9844f0c4f33a342cbcbb5117de8001e6ba0dc2351327d09"
+checksum = "a400e31aa60b9d44a52a8ee0343b5b18566b03a8321e0d321f695cf56e940160"
 dependencies = [
  "cfg-if",
  "pin-project-lite",

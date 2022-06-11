@@ -25,7 +25,7 @@ pub mod updates;
 
 pub use client::*;
 pub use server::*;
-pub use updates::{ComponentsUpdate, EntityUpdate, Reliable, Unreliable};
+pub use updates::{ComponentsUpdate, EntityUpdate};
 
 /// Private key for signing connect tokens for clients.
 ///
@@ -38,7 +38,7 @@ pub const PORT: u16 = 42069;
 pub const SERVER_RELIABLE: u8 = 0;
 pub const UNRELIABLE: u8 = 1;
 pub const BLOCK: u8 = 2;
-pub const COMPONENT_RELIABLE: u8 = 3;
+pub const COMPONENT: u8 = 3;
 
 /// If we see this component we have control over this entity.
 ///
@@ -175,10 +175,9 @@ pub fn localhost_ip() -> &'static str {
 /// Protocol identifier so we have more obvious breakage when we change the protocol.
 pub fn protocol_id() -> u64 {
     let concat = format!(
-        "server:{};unreliable:{};reliable:{}",
+        "server:{};entity:{};",
         ServerMessage::protocol_id().to_string(),
-        Reliable::<EntityUpdate>::protocol_id().to_string(),
-        Unreliable::<EntityUpdate>::protocol_id().to_string(),
+        EntityUpdate::protocol_id().to_string(),
     );
     let mut s = std::collections::hash_map::DefaultHasher::new();
     concat.hash(&mut s);

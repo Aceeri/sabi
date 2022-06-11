@@ -38,16 +38,6 @@ impl EntityUpdate {
     }
 }
 
-/// Thin wrapper type to differentiate between reliable and unreliable components.
-///
-/// Reliable means that we probably aren't going to be updating it that often and we don't care as much about the latency.
-/// Unreliable means that we are probably updating it extremely frequently.
-#[derive(Debug, Deref, DerefMut, Clone, Serialize, Deserialize)]
-pub struct Reliable<T>(pub T);
-
-#[derive(Debug, Deref, DerefMut, Clone, Serialize, Deserialize)]
-pub struct Unreliable<T>(pub T);
-
 #[derive(Default, Deref, DerefMut, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ComponentsUpdate(pub HashMap<ReplicateId, Vec<u8>>);
 
@@ -57,13 +47,7 @@ impl ComponentsUpdate {
     }
 }
 
-impl Reliable<EntityUpdate> {
-    pub fn protocol_id() -> u64 {
-        1
-    }
-}
-
-impl Unreliable<EntityUpdate> {
+impl EntityUpdate {
     pub fn protocol_id() -> u64 {
         1
     }

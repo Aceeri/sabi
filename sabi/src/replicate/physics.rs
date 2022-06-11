@@ -156,14 +156,15 @@ impl Replicate for Ccd {
 }
 
 impl Replicate for Sensor {
-    type Def = bool;
+    type Def = ();
     fn into_def(self) -> Self::Def {
-        self.0
+        ()
     }
     fn from_def(def: Self::Def) -> Self {
-        Sensor(def)
+        Sensor
     }
 }
+
 impl Replicate for GravityScale {
     type Def = f32;
     fn into_def(self) -> Self::Def {
