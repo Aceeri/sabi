@@ -43,42 +43,57 @@ pub fn new_renet_client() -> RenetClient {
     RenetClient::new(current_time, socket, client_id, token, connection_config).unwrap()
 }
 
-pub fn client_recv_interest_reliable(
-    mut commands: Commands,
-    mut server_entities: ResMut<ServerEntities>,
-    mut update_events: EventWriter<(ServerEntity, ComponentsUpdate)>,
-    mut client: ResMut<RenetClient>,
-) {
-    while let Some(message) = client.receive_message(COMPONENT) {
-        let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
-        let data: EntityUpdate = bincode::deserialize(&decompressed).unwrap();
-
-        for (server_entity, _) in data.iter() {
-            server_entities.spawn_or_get(&mut commands, *server_entity);
-        }
-
-        update_events.send_batch(data.0.into_iter());
-    }
+pub fn client_connected(client: ResMut<RenetClient>) -> bool {
+    client.is_connected()
 }
 
-pub fn client_update_reliable<C>(
-    mut commands: Commands,
-    mut server_entities: ResMut<ServerEntities>,
-    mut update_events: EventReader<(ServerEntity, ComponentsUpdate)>,
-    mut query: Query<&mut C>,
-) where
-    C: 'static + Send + Sync + Component + Replicate,
-{
-    for (server_entity, components_update) in update_events.iter() {
-        if let Some(update_data) = components_update.get(&C::replicate_id()) {
-            let def: <C as Replicate>::Def = bincode::deserialize(&update_data).unwrap();
-            let entity = server_entities.spawn_or_get(&mut commands, *server_entity);
+/// Authoritative mapping of server entities to entities for clients.
+///
+/// This is so clients can figure out which entity the server is talking about.
+#[derive(Default, Debug, Clone)]
+pub struct ServerEntities(HashMap<ServerEntity, Entity>);
 
-            if let Ok(mut component) = query.get_mut(entity) {
-                component.apply_def(def);
-            } else {
-                let component = C::from_def(def);
-                commands.entity(entity).insert(component);
+impl ServerEntities {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn spawn_or_get(&mut self, commands: &mut Commands, server_entity: ServerEntity) -> Entity {
+        match self.0.entry(server_entity) {
+            Entry::Occupied(entity) => *entity.get(),
+            Entry::Vacant(vacant) => {
+                let new_entity = commands.spawn().insert(server_entity).id();
+                vacant.insert(new_entity);
+                new_entity
+            }
+        }
+    }
+
+    pub fn get(&self, entities: &Entities, server_entity: ServerEntity) -> Option<Entity> {
+        let entity = self.0.get(&server_entity).cloned();
+        entity.filter(|entity| entities.contains(*entity))
+    }
+
+    pub fn clean(&mut self, entities: &Entities) -> bool {
+        let mut dead = Vec::new();
+        for (server_entity, entity) in self.0.iter() {
+            if !entities.contains(*entity) {
+                dead.push(*server_entity);
+            }
+        }
+
+        for server_entity in dead.iter() {
+            self.0.remove(server_entity);
+        }
+
+        dead.len() > 0
+    }
+
+    /// Despawn any server entities
+    pub fn disconnect(&mut self, entities: &Entities, commands: &mut Commands) {
+        for (_server_entity, entity) in self.0.drain() {
+            if entities.contains(entity) {
+                commands.entity(entity).despawn_recursive();
             }
         }
     }

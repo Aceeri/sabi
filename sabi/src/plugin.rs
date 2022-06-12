@@ -8,9 +8,10 @@ use bevy_renet::{
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
 
 use crate::{
-    protocol::updates::EntityUpdate, replicate::physics::ReplicatePhysicsPlugin, Replicate,
+    protocol::update::EntityUpdate, replicate::physics::ReplicatePhysicsPlugin, Replicate,
 };
 
+use crate::prelude::*;
 use crate::protocol::*;
 
 pub struct ReplicatePlugin<C>(PhantomData<C>)
@@ -33,7 +34,7 @@ where
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<RenetServer>() {
             app.add_system(
-                crate::protocol::server_queue_interest::<C>
+                crate::protocol::update::server_queue_interest::<C>
                     .run_if(crate::protocol::on_network_tick)
                     .run_if_resource_exists::<RenetServer>()
                     .before("send_interests")
@@ -41,14 +42,14 @@ where
             );
 
             app.add_system(
-                crate::protocol::server_bump_all::<C>
+                crate::protocol::priority::server_bump_all::<C>
                     .run_if(crate::protocol::on_network_tick)
                     .run_if_resource_exists::<RenetServer>()
                     .before("fetch_priority"),
             );
 
             app.add_system(
-                crate::protocol::server_bump_changed::<C>
+                crate::protocol::priority::server_bump_changed::<C>
                     .run_if(crate::protocol::on_network_tick)
                     .run_if_resource_exists::<RenetServer>()
                     .before("fetch_priority"),
@@ -57,7 +58,7 @@ where
 
         if app.world.contains_resource::<RenetClient>() {
             app.add_system(
-                crate::protocol::client_update_reliable::<C>
+                crate::protocol::update::client_update_reliable::<C>
                     .with_run_criteria(run_if_client_conected),
             );
         }
@@ -107,15 +108,15 @@ pub struct SabiServerPlugin;
 impl Plugin for SabiServerPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(crate::protocol::new_renet_server());
-        app.insert_resource(PriorityAccumulator::new());
-        app.insert_resource(ReplicateSizeEstimates::new());
-        app.insert_resource(ReplicateMaxSize::default());
-        app.insert_resource(ComponentsToSend::new());
+        app.insert_resource(crate::protocol::priority::PriorityAccumulator::new());
+        app.insert_resource(crate::protocol::priority::ReplicateSizeEstimates::new());
+        app.insert_resource(crate::protocol::priority::ReplicateMaxSize::default());
+        app.insert_resource(crate::protocol::priority::ComponentsToSend::new());
 
         app.add_plugin(bevy_renet::RenetServerPlugin);
 
         app.add_system(
-            fetch_top_priority
+            crate::protocol::priority::fetch_top_priority
                 .run_if_resource_exists::<RenetServer>()
                 .run_if(on_network_tick)
                 .label("fetch_priority"),
@@ -131,7 +132,7 @@ impl Plugin for SabiServerPlugin {
         app.add_system(display_server_bandwidth);
 
         app.add_system(
-            server_clear_queue
+            crate::protocol::update::server_clear_queue
                 .run_if(on_network_tick)
                 .after("send_interests"),
         );
@@ -146,7 +147,10 @@ impl Plugin for SabiClientPlugin {
         app.insert_resource(new_renet_client());
         app.add_plugin(RenetClientPlugin);
 
-        app.add_system(client_recv_interest_reliable.with_run_criteria(run_if_client_conected));
+        app.add_system(
+            crate::protocol::update::client_recv_interest_reliable
+                .with_run_criteria(run_if_client_conected),
+        );
     }
 }
 

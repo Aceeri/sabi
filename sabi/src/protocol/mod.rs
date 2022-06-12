@@ -20,12 +20,17 @@ use serde::{Deserialize, Serialize};
 use crate::prelude::*;
 
 pub mod client;
+pub mod input;
+pub mod lobby;
+pub mod priority;
 pub mod server;
-pub mod updates;
+pub mod tick;
+pub mod update;
 
 pub use client::*;
 pub use server::*;
-pub use updates::{ComponentsUpdate, EntityUpdate};
+pub use tick::{on_network_tick, tick_hz, tick_network, NetworkGameTimer, NetworkTick};
+pub use update::{ComponentsUpdate, EntityUpdate};
 
 /// Private key for signing connect tokens for clients.
 ///
@@ -34,11 +39,13 @@ pub use updates::{ComponentsUpdate, EntityUpdate};
 pub const PRIVATE_KEY: &[u8; NETCODE_KEY_BYTES] = b"JKS$C14tDvez8trgbdZcIuU&wz#OjG&3"; // 32-bytes
 pub const PORT: u16 = 42069;
 
-/// Channel IDs
-pub const SERVER_RELIABLE: u8 = 0;
-pub const UNRELIABLE: u8 = 1;
-pub const BLOCK: u8 = 2;
-pub const COMPONENT: u8 = 3;
+pub mod channel {
+    /// Channel IDs
+    pub const SERVER_MESSAGE: u8 = 0;
+    pub const CLIENT_INPUT: u8 = 1;
+    pub const COMPONENT: u8 = 2;
+    pub const BLOCK: u8 = 3;
+}
 
 /// If we see this component we have control over this entity.
 ///
@@ -46,12 +53,6 @@ pub const COMPONENT: u8 = 3;
 /// Mainly so the client can predict things like their character moving.
 #[derive(Debug, Deserialize, Component, Reflect)]
 pub struct Owned;
-
-/// Renet Client ID -> Player Character Entity mapping
-#[derive(Debug, Default)]
-pub struct Lobby {
-    pub players: HashMap<u64, Entity>,
-}
 
 /// Reliable protocol from the server to the clients for communicating the
 /// overall gamestate and assigning what the clients should predict.
@@ -107,58 +108,6 @@ impl From<Entity> for ServerEntity {
     }
 }
 
-/// Authoritative mapping of server entities to entities for clients.
-///
-/// This is so clients can figure out which entity the server is talking about.
-#[derive(Default, Debug, Clone)]
-pub struct ServerEntities(HashMap<ServerEntity, Entity>);
-
-impl ServerEntities {
-    pub fn new() -> Self {
-        Self(HashMap::new())
-    }
-
-    pub fn spawn_or_get(&mut self, commands: &mut Commands, server_entity: ServerEntity) -> Entity {
-        match self.0.entry(server_entity) {
-            Entry::Occupied(entity) => *entity.get(),
-            Entry::Vacant(vacant) => {
-                let new_entity = commands.spawn().insert(server_entity).id();
-                vacant.insert(new_entity);
-                new_entity
-            }
-        }
-    }
-
-    pub fn get(&self, entities: &Entities, server_entity: ServerEntity) -> Option<Entity> {
-        let entity = self.0.get(&server_entity).cloned();
-        entity.filter(|entity| entities.contains(*entity))
-    }
-
-    pub fn clean(&mut self, entities: &Entities) -> bool {
-        let mut dead = Vec::new();
-        for (server_entity, entity) in self.0.iter() {
-            if !entities.contains(*entity) {
-                dead.push(*server_entity);
-            }
-        }
-
-        for server_entity in dead.iter() {
-            self.0.remove(server_entity);
-        }
-
-        dead.len() > 0
-    }
-
-    /// Despawn any server entities
-    pub fn disconnect(&mut self, entities: &Entities, commands: &mut Commands) {
-        for (_server_entity, entity) in self.0.drain() {
-            if entities.contains(entity) {
-                commands.entity(entity).despawn_recursive();
-            }
-        }
-    }
-}
-
 /// Local ip to bind to so we can have others connect.
 ///
 /// Windows is weird here and doesn't let you do it on `localhost`/`127.0.0.1`
@@ -188,19 +137,19 @@ pub fn renet_connection_config() -> RenetConnectionConfig {
     let mut connection_config = RenetConnectionConfig::default();
     connection_config.channels_config = vec![
         ChannelConfig::Reliable(ReliableChannelConfig {
-            channel_id: 0,
+            channel_id: channel::SERVER_MESSAGE,
             ..Default::default()
         }),
         ChannelConfig::Unreliable(UnreliableChannelConfig {
-            channel_id: 1,
+            channel_id: channel::CLIENT_INPUT,
+            ..Default::default()
+        }),
+        ChannelConfig::Unreliable(UnreliableChannelConfig {
+            channel_id: channel::COMPONENT,
             ..Default::default()
         }),
         ChannelConfig::Block(BlockChannelConfig {
-            channel_id: 2,
-            ..Default::default()
-        }),
-        ChannelConfig::Unreliable(UnreliableChannelConfig {
-            channel_id: 3,
+            channel_id: channel::BLOCK,
             ..Default::default()
         }),
     ];
@@ -226,34 +175,4 @@ pub fn public_ip() -> Option<String> {
         Ok(addr) => return Some(addr.ip().to_string()),
         Err(_) => return None,
     };
-}
-
-/// Tick rate of the network sending/receiving
-#[derive(Deref, DerefMut, Debug, Clone)]
-pub struct NetworkGameTimer(pub Timer);
-
-impl Default for NetworkGameTimer {
-    fn default() -> Self {
-        // 16Hz
-        Self(Timer::new(tick_hz(32), true))
-    }
-}
-
-impl NetworkGameTimer {
-    pub fn new(tick_rate: Duration) -> Self {
-        Self(Timer::new(tick_rate, true))
-    }
-}
-
-/// Quick function for getting a duration for tick rates.
-pub const fn tick_hz(rate: u64) -> Duration {
-    Duration::from_nanos(1_000_000_000 / rate)
-}
-
-pub fn tick_network(time: Res<Time>, mut network_timer: ResMut<NetworkGameTimer>) {
-    network_timer.tick(time.delta());
-}
-
-pub fn on_network_tick(network_timer: Res<NetworkGameTimer>) -> bool {
-    network_timer.just_finished()
 }
