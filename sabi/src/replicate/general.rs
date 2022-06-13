@@ -4,7 +4,7 @@ use crate::prelude::Replicate;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "Transform")]
 #[replicate(remote = "Transform")]
 #[replicate(crate = "crate")]
@@ -14,7 +14,7 @@ pub struct TransformDef {
     pub scale: Vec3,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "GlobalTransform")]
 #[replicate(remote = "GlobalTransform")]
 #[replicate(crate = "crate")]
@@ -24,7 +24,7 @@ pub struct GlobalTransformDef {
     pub scale: Vec3,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "Parent")]
 #[replicate(remote = "Parent")]
 #[replicate(crate = "crate")]

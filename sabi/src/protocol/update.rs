@@ -84,7 +84,7 @@ pub fn client_update_reliable<C>(
     mut update_events: EventReader<(ServerEntity, ComponentsUpdate)>,
     mut query: Query<&mut C>,
 ) where
-    C: 'static + Send + Sync + Component + Replicate,
+    C: 'static + Send + Sync + Component + Replicate + Clone,
 {
     for (server_entity, components_update) in update_events.iter() {
         if let Some(update_data) = components_update.get(&C::replicate_id()) {
@@ -92,7 +92,10 @@ pub fn client_update_reliable<C>(
             let entity = server_entities.spawn_or_get(&mut commands, *server_entity);
 
             if let Ok(mut component) = query.get_mut(entity) {
-                component.apply_def(def);
+                let current_def = component.clone().into_def();
+                if current_def != def {
+                    component.apply_def(def);
+                }
             } else {
                 let component = C::from_def(def);
                 commands.entity(entity).insert(component);

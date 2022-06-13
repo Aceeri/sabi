@@ -30,7 +30,7 @@ impl Plugin for ReplicatePhysicsPlugin {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "RigidBody")]
 #[replicate(remote = "RigidBody")]
 #[replicate(crate = "crate")]
@@ -41,7 +41,7 @@ pub enum RigidBodyDef {
     KinematicPositionBased,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "Velocity")]
 #[replicate(remote = "Velocity")]
 #[replicate(crate = "crate")]
@@ -50,7 +50,7 @@ pub struct VelocityDef {
     pub angvel: Vec3,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "MassProperties")]
 #[replicate(remote = "MassProperties")]
 #[replicate(crate = "crate")]
@@ -61,7 +61,7 @@ pub struct MassPropertiesDef {
     pub principal_inertia: Vec3,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "AdditionalMassProperties")]
 #[replicate(remote = "AdditionalMassProperties")]
 #[replicate(crate = "crate")]
@@ -77,7 +77,7 @@ impl Replicate for LockedAxes {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "ExternalForce")]
 #[replicate(remote = "ExternalForce")]
 #[replicate(crate = "crate")]
@@ -86,7 +86,7 @@ pub struct ExternalForceDef {
     pub torque: Vec3,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "ExternalImpulse")]
 #[replicate(remote = "ExternalImpulse")]
 #[replicate(crate = "crate")]
@@ -95,7 +95,7 @@ pub struct ExternalImpulseDef {
     pub torque_impulse: Vec3,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "Sleeping")]
 #[replicate(remote = "Sleeping")]
 #[replicate(crate = "crate")]
@@ -105,7 +105,7 @@ pub struct SleepingDef {
     pub sleeping: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "Damping")]
 #[replicate(remote = "Damping")]
 #[replicate(crate = "crate")]
@@ -114,7 +114,7 @@ pub struct DampingDef {
     pub angular_damping: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(remote = "CoefficientCombineRule")]
 pub enum CoefficientCombineRuleDef {
     Average,
@@ -123,7 +123,7 @@ pub enum CoefficientCombineRuleDef {
     Max,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "Friction")]
 #[replicate(remote = "Friction")]
 #[replicate(crate = "crate")]
@@ -134,7 +134,7 @@ pub struct FrictionDef {
     pub combine_rule: CoefficientCombineRule,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "Restitution")]
 #[replicate(remote = "Restitution")]
 #[replicate(crate = "crate")]
@@ -185,7 +185,7 @@ impl Replicate for Dominance {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "CollisionGroups")]
 #[replicate(remote = "CollisionGroups")]
 #[replicate(crate = "crate")]
@@ -194,7 +194,7 @@ pub struct CollisionGroupsDef {
     pub filters: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "SolverGroups")]
 #[replicate(remote = "SolverGroups")]
 #[replicate(crate = "crate")]
@@ -203,17 +203,26 @@ pub struct SolverGroupsDef {
     pub filters: u32,
 }
 
-impl Replicate for Collider {
-    type Def = SharedShape;
-    fn into_def(self) -> Self::Def {
-        self.raw
-    }
-    fn from_def(shared_shape: Self::Def) -> Self {
-        Collider::from(shared_shape)
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SharedShapeEq(SharedShape);
+
+impl PartialEq for SharedShapeEq {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.shape_type() == other.0.shape_type()
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Replicate)]
+impl Replicate for Collider {
+    type Def = SharedShapeEq;
+    fn into_def(self) -> Self::Def {
+        SharedShapeEq(self.raw)
+    }
+    fn from_def(shared_shape: Self::Def) -> Self {
+        Collider::from(shared_shape.0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "ColliderScale")]
 #[replicate(remote = "ColliderScale")]
 #[replicate(crate = "crate")]

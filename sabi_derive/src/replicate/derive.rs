@@ -29,7 +29,7 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream, Vec<syn::Error>> {
         from_def = quote! { def.0 };
 
         Some(quote! {
-            #[derive(Debug, Clone, Serialize, Deserialize)]
+            #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
             pub struct #replicate_ident(#[serde(with = #remote_ident_str)] pub #remote_path);
         })
     } else {

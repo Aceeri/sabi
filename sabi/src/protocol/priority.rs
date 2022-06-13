@@ -182,6 +182,6 @@ pub fn server_bump_changed<C>(
     C: 'static + Send + Sync + Component + Replicate + Clone,
 {
     for entity in interest.iter() {
-        priority.bump(entity, C::replicate_id(), 0.1);
+        priority.bump(entity, C::replicate_id(), 1.0);
     }
 }

@@ -12,7 +12,6 @@ use bevy_renet::renet::{
 use std::{
     hash::{Hash, Hasher},
     net::UdpSocket,
-    time::Duration,
 };
 
 use serde::{Deserialize, Serialize};

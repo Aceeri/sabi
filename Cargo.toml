@@ -1,3 +1,6 @@
 [workspace]
 members = ["sabi", "sabi_derive"]
 resolver = "2"
+
+[patch.crates-io]
+bevy_rapier3d = {version = "0.14", path = "../bevy_rapier/bevy_rapier3d"}

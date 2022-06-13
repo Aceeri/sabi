@@ -9,7 +9,6 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 
-pub mod collider;
 pub mod general;
 pub mod physics;
 
@@ -97,7 +96,7 @@ pub trait Replicate
 where
     Self: Sized,
 {
-    type Def: Serialize + for<'de> Deserialize<'de>;
+    type Def: Serialize + for<'de> Deserialize<'de> + PartialEq;
     fn into_def(self) -> Self::Def;
     fn from_def(def: Self::Def) -> Self;
     fn apply_def(&mut self, def: Self::Def) {
