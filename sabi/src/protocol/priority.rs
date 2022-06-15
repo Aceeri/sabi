@@ -2,16 +2,10 @@ use bevy::{
     ecs::query::{FilterFetch, WorldQuery},
     prelude::*,
 };
-use bevy_renet::renet::{RenetServer, ServerConfig};
+
 use smallvec::SmallVec;
 
-use std::{
-    marker::PhantomData,
-    net::{Ipv4Addr, SocketAddrV4, ToSocketAddrs, UdpSocket},
-    time::Duration,
-};
-
-use std::time::SystemTime;
+use std::marker::PhantomData;
 
 use crate::protocol::*;
 
@@ -46,7 +40,7 @@ impl PriorityAccumulator {
     pub fn get_or_insert_index(&mut self, entity: Entity, replicate_id: ReplicateId) -> usize {
         match self.entity_map.entry((entity, replicate_id)) {
             Entry::Occupied(occupied) => *occupied.get(),
-            Entry::Vacant(vacant) => self.new_index(entity, replicate_id),
+            Entry::Vacant(_vacant) => self.new_index(entity, replicate_id),
         }
     }
 

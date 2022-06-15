@@ -10,8 +10,6 @@ use std::time::SystemTime;
 
 use crate::protocol::*;
 
-use super::priority::{ComponentsToSend, PriorityAccumulator, ReplicateSizeEstimates};
-
 pub fn new_renet_server() -> RenetServer {
     let local_ip =
         crate::protocol::public_ip().unwrap_or(crate::protocol::localhost_ip().to_owned());
@@ -103,7 +101,7 @@ pub fn display_server_bandwidth(
     time: Res<Time>,
     lobby: Res<Lobby>,
     mut timer: ResMut<BandwidthTimer>,
-    mut server: ResMut<RenetServer>,
+    server: ResMut<RenetServer>,
 ) {
     timer.tick(time.delta());
 

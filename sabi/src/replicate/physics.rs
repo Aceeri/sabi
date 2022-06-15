@@ -162,7 +162,7 @@ impl Replicate for Sensor {
     fn into_def(self) -> Self::Def {
         ()
     }
-    fn from_def(def: Self::Def) -> Self {
+    fn from_def(_def: Self::Def) -> Self {
         Sensor
     }
 }

@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-use std::collections::hash_map::{DefaultHasher, Entry};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, RwLock};
