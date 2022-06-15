@@ -421,7 +421,6 @@ dependencies = [
 [[package]]
 name = "bevy_rapier3d"
 version = "0.14.1"
-source = "git+https://github.com/aceeri/bevy_rapier?branch=temp-for-usage#557a3fac8148effae13d7bc76c9ca3897a25f81c"
 dependencies = [
  "bevy",
  "bitflags",
@@ -2879,7 +2878,3 @@ dependencies = [
  "cc",
  "libc",
 ]
-
-[[patch.unused]]
-name = "bevy_rapier3d"
-version = "0.14.1"

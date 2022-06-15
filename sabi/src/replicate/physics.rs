@@ -3,7 +3,7 @@ use bevy_rapier3d::{prelude::*, rapier::prelude::SharedShape};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{plugin::ReplicatePlugin, Replicate};
+use crate::{plugin::ReplicatePlugin, protocol::priority::RequireDependency, Replicate};
 
 pub struct ReplicatePhysicsPlugin;
 impl Plugin for ReplicatePhysicsPlugin {
@@ -27,6 +27,8 @@ impl Plugin for ReplicatePhysicsPlugin {
         app.add_plugin(ReplicatePlugin::<SolverGroups>::default());
         app.add_plugin(ReplicatePlugin::<Collider>::default());
         app.add_plugin(ReplicatePlugin::<ColliderScale>::default());
+
+        app.add_plugin(RequireDependency::<Collider, RigidBody>::default());
     }
 }
 

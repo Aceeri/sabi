@@ -42,14 +42,14 @@ where
             );
 
             app.add_system(
-                crate::protocol::priority::server_bump_all::<C>
+                crate::protocol::priority::server_bump_filtered::<C, With<C>, 1>
                     .run_if(crate::protocol::on_network_tick)
                     .run_if_resource_exists::<RenetServer>()
                     .before("fetch_priority"),
             );
 
             app.add_system(
-                crate::protocol::priority::server_bump_changed::<C>
+                crate::protocol::priority::server_bump_filtered::<C, Changed<C>, 100>
                     .run_if(crate::protocol::on_network_tick)
                     .run_if_resource_exists::<RenetServer>()
                     .before("fetch_priority"),

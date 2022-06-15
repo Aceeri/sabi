@@ -10,7 +10,7 @@ path = "src/lib.rs"
 sabi_derive = {path = "../sabi_derive"}
 
 #bevy_rapier3d = {version = "0.14", features = ["serde-serialize"]}
-bevy_rapier3d = {version = "0.14", git = "https://github.com/aceeri/bevy_rapier", branch = "temp-for-usage", features = ["serde-serialize"]}
+bevy_rapier3d = {version = "0.14", features = ["serde-serialize"]}
 #bevy_rapier3d = {version = "0.14", path = "../../bevy_rapier/bevy_rapier3d", features = ["serde-serialize"]}
 bevy_renet = {git = "https://github.com/lucaspoffo/renet"}
 bincode = "1.3"

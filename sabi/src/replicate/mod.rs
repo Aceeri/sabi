@@ -94,7 +94,7 @@ pub struct ReplicateId(pub u16);
 
 pub trait Replicate
 where
-    Self: Sized,
+    Self: 'static + Sized + Send + Sync,
 {
     type Def: Serialize + for<'de> Deserialize<'de> + PartialEq;
     fn into_def(self) -> Self::Def;
