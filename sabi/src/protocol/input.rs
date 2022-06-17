@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
-use super::NetworkTick;
+use super::{tick::NetworkAck, NetworkTick};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientInputBuffer<I>
@@ -48,6 +48,7 @@ where
     I: 'static + Send + Sync + Component + Clone + Default + Serialize,
 {
     pub tick: NetworkTick,
+    pub ack: NetworkAck,
     pub buffer: ClientInputBuffer<I>,
 }
 
@@ -81,6 +82,7 @@ pub fn client_send_input<I>(
 {
     let message = ClientInputMessage {
         tick: tick.clone(),
+        ack: NetworkAck::new(tick.clone()),
         buffer: input_buffer.clone(),
     };
 

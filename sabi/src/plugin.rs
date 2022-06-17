@@ -8,7 +8,9 @@ use bevy_renet::{
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
 
 use crate::{
-    protocol::update::EntityUpdate, replicate::physics::ReplicatePhysicsPlugin, Replicate,
+    protocol::update::{server_send_interest, EntityUpdate},
+    replicate::physics::ReplicatePhysicsPlugin,
+    Replicate,
 };
 
 use crate::prelude::*;

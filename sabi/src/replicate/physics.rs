@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_rapier3d::{prelude::*, rapier::prelude::SharedShape};
 
+use bevy_renet::renet::RenetServer;
 use serde::{Deserialize, Serialize};
 
 use crate::{plugin::ReplicatePlugin, protocol::priority::RequireDependency, Replicate};

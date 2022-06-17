@@ -120,10 +120,3 @@ pub fn display_server_bandwidth(
         }
     }
 }
-
-pub fn server_send_interest(updates: Res<EntityUpdate>, mut server: ResMut<RenetServer>) {
-    let data = bincode::serialize(&*updates).unwrap();
-    let data = zstd::bulk::compress(&data.as_slice(), 0).unwrap();
-
-    server.broadcast_message(channel::COMPONENT, data);
-}

@@ -1,15 +1,21 @@
 use std::fmt;
 
 use bevy::{prelude::*, utils::HashMap};
-use bevy_renet::renet::RenetClient;
+use bevy_renet::renet::{RenetClient, RenetServer};
 
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::priority::{ComponentsToSend, PriorityAccumulator, ReplicateSizeEstimates};
+use super::{
+    priority::{ComponentsToSend, PriorityAccumulator, ReplicateSizeEstimates},
+    NetworkTick,
+};
 
-#[derive(Deref, DerefMut, Clone, Serialize, Deserialize)]
-pub struct ClientEntityUpdate(pub HashMap<u64, EntityUpdate>);
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateMessage {
+    tick: NetworkTick,
+    entity_update: EntityUpdate,
+}
 
 #[derive(Deref, DerefMut, Clone, Serialize, Deserialize)]
 pub struct EntityUpdate {
@@ -68,13 +74,13 @@ pub fn client_recv_interest_reliable(
 ) {
     while let Some(message) = client.receive_message(channel::COMPONENT) {
         let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
-        let data: EntityUpdate = bincode::deserialize(&decompressed).unwrap();
+        let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
 
-        for (server_entity, _) in data.iter() {
+        for (server_entity, _) in message.entity_update.iter() {
             server_entities.spawn_or_get(&mut commands, *server_entity);
         }
 
-        update_events.send_batch(data.updates.into_iter());
+        update_events.send_batch(message.entity_update.updates.into_iter());
     }
 }
 
@@ -135,4 +141,11 @@ pub fn server_queue_interest<C>(
             }
         }
     }
+}
+
+pub fn server_send_interest(updates: Res<EntityUpdate>, mut server: ResMut<RenetServer>) {
+    let data = bincode::serialize(&*updates).unwrap();
+    let data = zstd::bulk::compress(&data.as_slice(), 0).unwrap();
+
+    server.broadcast_message(channel::COMPONENT, data);
 }
