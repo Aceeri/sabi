@@ -22,6 +22,7 @@ pub mod client;
 pub mod input;
 pub mod lobby;
 pub mod priority;
+pub mod resim;
 pub mod server;
 pub mod tick;
 pub mod update;
@@ -37,6 +38,8 @@ pub use update::{ComponentsUpdate, EntityUpdate};
 /// matchmaking server/relay.
 pub const PRIVATE_KEY: &[u8; NETCODE_KEY_BYTES] = b"JKS$C14tDvez8trgbdZcIuU&wz#OjG&3"; // 32-bytes
 pub const PORT: u16 = 42069;
+
+pub type ClientId = u64;
 
 pub mod channel {
     /// Channel IDs
@@ -57,10 +60,10 @@ pub struct Owned;
 /// overall gamestate and assigning what the clients should predict.
 #[derive(Debug, Serialize, Deserialize, Component)]
 pub enum ServerMessage {
-    SetPlayer { id: u64, entity: ServerEntity },
+    SetPlayer { id: ClientId, entity: ServerEntity },
     AssignOwnership { entity: ServerEntity },
-    PlayerConnected { id: u64, entity: ServerEntity },
-    PlayerDisconnected { id: u64 },
+    PlayerConnected { id: ClientId, entity: ServerEntity },
+    PlayerDisconnected { id: ClientId },
 }
 
 impl ServerMessage {

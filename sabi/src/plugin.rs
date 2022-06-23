@@ -87,7 +87,6 @@ impl Plugin for SabiPlugin {
         app.add_event::<(ServerEntity, ComponentsUpdate)>();
 
         app.insert_resource(ServerEntities::default());
-        app.insert_resource(NetworkTick::new());
         app.insert_resource(EntityUpdate::new());
 
         app.insert_resource(Lobby::default());
