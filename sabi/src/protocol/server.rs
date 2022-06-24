@@ -75,7 +75,7 @@ pub fn new_renet_server() -> RenetServer {
     let protocol_id = crate::protocol::protocol_id();
     println!("protocol id: {:?}", protocol_id,);
 
-    let socket = UdpSocket::bind(local_addr).unwrap();
+    let socket = UdpSocket::bind(server_addr).unwrap();
     socket
         .set_nonblocking(true)
         .expect("Can't set non-blocking mode");
@@ -91,38 +91,3 @@ pub fn new_renet_server() -> RenetServer {
         .unwrap();
     RenetServer::new(current_time, server_config, connection_config, socket).unwrap()
 }
-
-/*
-#[derive(Debug, Clone, Deref, DerefMut)]
-pub struct BandwidthTimer(Timer);
-
-impl BandwidthTimer {
-    pub fn new() -> Self {
-        Self(Timer::new(Duration::from_secs(1), true))
-    }
-}
-
-pub fn display_server_bandwidth(
-    time: Res<Time>,
-    lobby: Res<Lobby>,
-    mut timer: ResMut<BandwidthTimer>,
-    server: ResMut<RenetServer>,
-) {
-    timer.tick(time.delta());
-
-    if timer.just_finished() {
-        for client_id in lobby.players.keys() {
-            if let Some(network_info) = server.network_info(*client_id) {
-                info!(
-                    "client: {}, rtt: {:.0}, loss: {:.2}, skbps: {:.1}, rkbps: {:.1}",
-                    client_id,
-                    network_info.rtt,
-                    network_info.packet_loss,
-                    network_info.sent_bandwidth_kbps,
-                    network_info.received_bandwidth_kbps,
-                );
-            }
-        }
-    }
-}
- */
