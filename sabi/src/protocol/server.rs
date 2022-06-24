@@ -88,6 +88,7 @@ pub fn new_renet_server() -> RenetServer {
     RenetServer::new(current_time, server_config, connection_config, socket).unwrap()
 }
 
+/*
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct BandwidthTimer(Timer);
 
@@ -120,3 +121,4 @@ pub fn display_server_bandwidth(
         }
     }
 }
+ */
