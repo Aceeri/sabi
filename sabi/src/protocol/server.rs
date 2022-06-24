@@ -81,7 +81,11 @@ pub fn new_renet_server() -> RenetServer {
         .expect("Can't set non-blocking mode");
 
     let connection_config = crate::protocol::renet_connection_config();
-    let server_config = ServerConfig::new(10, protocol_id, server_addr, *PRIVATE_KEY);
+    let server_config = ServerConfig {
+        max_clients: 10,
+        protocol_id: protocol_id,
+        private_key: *PRIVATE_KEY,
+    };
     let current_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap();

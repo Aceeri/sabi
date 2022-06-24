@@ -149,9 +149,6 @@ where
                 .label("send_interests"),
         );
 
-        //app.insert_resource(BandwidthTimer::new());
-        //app.add_system(display_server_bandwidth);
-
         app.add_system(
             crate::protocol::update::server_clear_queue
                 .run_if(on_network_tick)
