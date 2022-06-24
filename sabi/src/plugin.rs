@@ -89,6 +89,7 @@ impl Plugin for SabiPlugin {
 
         app.insert_resource(ServerEntities::default());
         app.insert_resource(EntityUpdate::new());
+        app.insert_resource(NetworkTick::default());
 
         app.insert_resource(Lobby::default());
         app.insert_resource(NetworkGameTimer::new(self.tick_rate));
