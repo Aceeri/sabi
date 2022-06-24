@@ -6,6 +6,7 @@ use bevy_renet::{
     run_if_client_conected, RenetClientPlugin,
 };
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     protocol::update::{server_send_interest, EntityUpdate},
@@ -105,17 +106,35 @@ impl Plugin for SabiPlugin {
     }
 }
 
-pub struct SabiServerPlugin;
+#[derive(Debug, Clone)]
+pub struct SabiServerPlugin<I>(PhantomData<I>);
 
-impl Plugin for SabiServerPlugin {
+impl<I> Default for SabiServerPlugin<I> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<I> Plugin for SabiServerPlugin<I>
+where
+    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+{
     fn build(&self, app: &mut App) {
         app.insert_resource(crate::protocol::new_renet_server());
         app.insert_resource(crate::protocol::priority::PriorityAccumulator::new());
         app.insert_resource(crate::protocol::priority::ReplicateSizeEstimates::new());
         app.insert_resource(crate::protocol::priority::ReplicateMaxSize::default());
         app.insert_resource(crate::protocol::priority::ComponentsToSend::new());
+        app.insert_resource(crate::protocol::input::PerClientQueuedInputs::<I>::new());
 
         app.add_plugin(bevy_renet::RenetServerPlugin);
+
+        app.add_system(
+            crate::protocol::input::server_recv_input::<I>
+                .run_if_resource_exists::<RenetServer>()
+                .run_if(on_network_tick)
+                .label("recv_input"),
+        );
 
         app.add_system(
             crate::protocol::priority::fetch_top_priority
@@ -142,16 +161,41 @@ impl Plugin for SabiServerPlugin {
     }
 }
 
-pub struct SabiClientPlugin;
+#[derive(Debug, Clone)]
+pub struct SabiClientPlugin<I>(PhantomData<I>);
 
-impl Plugin for SabiClientPlugin {
+impl<I> Default for SabiClientPlugin<I> {
+    fn default() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<I> Plugin for SabiClientPlugin<I>
+where
+    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+{
     fn build(&self, app: &mut App) {
         app.insert_resource(new_renet_client());
         app.add_plugin(RenetClientPlugin);
 
         app.add_system(
-            crate::protocol::update::client_recv_interest_reliable
-                .with_run_criteria(run_if_client_conected),
+            crate::protocol::update::client_recv_interest_reliable.run_if(client_connected),
+        );
+
+        app.add_system(
+            crate::protocol::input::client_update_input_buffer::<I>
+                .run_if(client_connected)
+                .run_if(on_network_tick)
+                .label("client_update_input_buffer")
+                .before("client_send_input"),
+        );
+
+        app.add_system(
+            crate::protocol::input::client_send_input::<I>
+                .run_if(client_connected)
+                .run_if(on_network_tick)
+                .label("client_send_input")
+                .after("client_update_input_buffer"),
         );
     }
 }

@@ -43,8 +43,11 @@ pub fn new_renet_client() -> RenetClient {
     RenetClient::new(current_time, socket, client_id, token, connection_config).unwrap()
 }
 
-pub fn client_connected(client: ResMut<RenetClient>) -> bool {
-    client.is_connected()
+pub fn client_connected(client: Option<ResMut<RenetClient>>) -> bool {
+    match client {
+        Some(client) => client.is_connected(),
+        None => false,
+    }
 }
 
 /// Authoritative mapping of server entities to entities for clients.

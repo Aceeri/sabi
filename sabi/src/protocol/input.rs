@@ -13,27 +13,18 @@ use super::{tick::NetworkAck, ClientId, NetworkTick};
 pub const INPUT_RETAIN_BUFFER: i64 = 32;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClientInputMessage<I>
-where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize,
-{
+pub struct ClientInputMessage<I> {
     pub tick: NetworkTick,
     pub ack: NetworkAck,
     pub inputs: QueuedInputs<I>,
 }
 
 #[derive(Debug, Clone)]
-pub struct PerClientQueuedInputs<I>
-where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize,
-{
+pub struct PerClientQueuedInputs<I> {
     clients: HashMap<ClientId, QueuedInputs<I>>,
 }
 
-impl<I> PerClientQueuedInputs<I>
-where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize,
-{
+impl<I> PerClientQueuedInputs<I> {
     pub fn new() -> Self {
         Self {
             clients: HashMap::new(),
@@ -59,17 +50,11 @@ where
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QueuedInputs<I>
-where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize,
-{
+pub struct QueuedInputs<I> {
     queue: HashMap<NetworkTick, I>,
 }
 
-impl<I> QueuedInputs<I>
-where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize,
-{
+impl<I> QueuedInputs<I> {
     pub fn new() -> Self {
         Self {
             queue: HashMap::new(),
