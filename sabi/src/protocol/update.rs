@@ -13,8 +13,8 @@ use super::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateMessage {
-    tick: NetworkTick,
-    entity_update: EntityUpdate,
+    pub tick: NetworkTick,
+    pub entity_update: EntityUpdate,
 }
 
 #[derive(Deref, DerefMut, Clone, Serialize, Deserialize)]
@@ -68,6 +68,7 @@ impl EntityUpdate {
 
 pub fn client_recv_interest_reliable(
     mut commands: Commands,
+    mut tick: ResMut<NetworkTick>,
     mut server_entities: ResMut<ServerEntities>,
     mut update_events: EventWriter<(ServerEntity, ComponentsUpdate)>,
     mut client: ResMut<RenetClient>,
@@ -75,6 +76,10 @@ pub fn client_recv_interest_reliable(
     while let Some(message) = client.receive_message(channel::COMPONENT) {
         let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
         let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
+
+        if message.tick.tick() as i64 - tick.tick() as i64 > 10 {
+            *tick = NetworkTick::new(message.tick.tick() + 6);
+        }
 
         for (server_entity, _) in message.entity_update.iter() {
             server_entities.spawn_or_get(&mut commands, *server_entity);
@@ -143,8 +148,16 @@ pub fn server_queue_interest<C>(
     }
 }
 
-pub fn server_send_interest(updates: Res<EntityUpdate>, mut server: ResMut<RenetServer>) {
-    let data = bincode::serialize(&*updates).unwrap();
+pub fn server_send_interest(
+    tick: Res<NetworkTick>,
+    updates: Res<EntityUpdate>,
+    mut server: ResMut<RenetServer>,
+) {
+    let message = UpdateMessage {
+        tick: *tick,
+        entity_update: updates.clone(),
+    };
+    let data = bincode::serialize(&message).unwrap();
     let data = zstd::bulk::compress(&data.as_slice(), 0).unwrap();
 
     server.broadcast_message(channel::COMPONENT, data);

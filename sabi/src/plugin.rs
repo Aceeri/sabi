@@ -138,6 +138,14 @@ where
         );
 
         app.add_system(
+            crate::protocol::input::server_apply_input::<I>
+                .run_if_resource_exists::<RenetServer>()
+                .run_if(on_network_tick)
+                .label("apply_input")
+                .after("recv_input"),
+        );
+
+        app.add_system(
             crate::protocol::priority::fetch_top_priority
                 .run_if_resource_exists::<RenetServer>()
                 .run_if(on_network_tick)

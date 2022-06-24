@@ -2,6 +2,8 @@ use bevy::{
     prelude::*,
     utils::{Entry, HashMap},
 };
+
+use bevy::ecs::entity::Entities;
 use bevy_renet::renet::{RenetClient, RenetServer};
 
 use serde::{Deserialize, Serialize};
@@ -10,7 +12,8 @@ use crate::prelude::*;
 
 use super::{tick::NetworkAck, ClientId, NetworkTick};
 
-pub const INPUT_RETAIN_BUFFER: i64 = 32;
+pub const TARGET_PING: i64 = 60;
+pub const INPUT_RETAIN_BUFFER: i64 = 6;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientInputMessage<I> {
@@ -29,6 +32,10 @@ impl<I> PerClientQueuedInputs<I> {
         Self {
             clients: HashMap::new(),
         }
+    }
+
+    pub fn get(&self, client: ClientId, tick: &NetworkTick) -> Option<&I> {
+        self.clients.get(&client).and_then(|queue| queue.get(tick))
     }
 
     pub fn upsert(&mut self, client: ClientId, input: QueuedInputs<I>) {
@@ -59,6 +66,10 @@ impl<I> QueuedInputs<I> {
         Self {
             queue: HashMap::new(),
         }
+    }
+
+    pub fn get(&self, tick: &NetworkTick) -> Option<&I> {
+        self.queue.get(tick)
     }
 
     pub fn apply_buffer(&mut self, other: Self) {
@@ -113,8 +124,27 @@ pub fn server_recv_input<I>(
         while let Some(message) = server.receive_message(client_id, channel::CLIENT_INPUT) {
             let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
             let input_message: ClientInputMessage<I> = bincode::deserialize(&decompressed).unwrap();
+            println!("{:?}", input_message.tick);
 
             queued_inputs.upsert(client_id, input_message.inputs);
+        }
+    }
+}
+
+pub fn server_apply_input<I>(
+    mut commands: Commands,
+    entities: &Entities,
+    tick: Res<NetworkTick>,
+    queued_inputs: Res<PerClientQueuedInputs<I>>,
+    lobby: Res<Lobby>,
+) where
+    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+{
+    for (client, entity) in lobby.players.iter() {
+        if let Some(input) = queued_inputs.get(*client, &tick) {
+            if entities.contains(*entity) {
+                commands.entity(*entity).insert(input.clone());
+            }
         }
     }
 }

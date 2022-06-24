@@ -75,7 +75,7 @@ pub fn new_renet_server() -> RenetServer {
     let protocol_id = crate::protocol::protocol_id();
     println!("protocol id: {:?}", protocol_id,);
 
-    let socket = UdpSocket::bind(server_addr).unwrap();
+    let socket = UdpSocket::bind(local_addr).unwrap();
     socket
         .set_nonblocking(true)
         .expect("Can't set non-blocking mode");
@@ -84,6 +84,7 @@ pub fn new_renet_server() -> RenetServer {
     let server_config = ServerConfig {
         max_clients: 10,
         protocol_id: protocol_id,
+        public_addr: server_addr,
         private_key: *PRIVATE_KEY,
     };
     let current_time = SystemTime::now()
