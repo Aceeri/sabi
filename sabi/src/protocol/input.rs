@@ -1,4 +1,7 @@
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{
+    prelude::*,
+    utils::{Entry, HashMap},
+};
 use bevy_renet::renet::{RenetClient, RenetServer};
 
 use serde::{Deserialize, Serialize};
@@ -38,7 +41,14 @@ where
     }
 
     pub fn upsert(&mut self, client: ClientId, input: QueuedInputs<I>) {
-        self.clients.insert(client, input);
+        match self.clients.entry(client) {
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().apply_buffer(input);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(input);
+            }
+        }
     }
 
     pub fn clean_old(&mut self, current: NetworkTick) {
@@ -66,6 +76,21 @@ where
         }
     }
 
+    pub fn apply_buffer(&mut self, other: Self) {
+        for (tick, input) in other.queue {
+            self.upsert(tick, input);
+        }
+    }
+
+    /// Upsert inputs, but reject inserting for previous ticks.
+    pub fn upsert_reject(&mut self, current: NetworkTick, tick: NetworkTick, input: I) {
+        if tick.tick() < current.tick() {
+            return;
+        }
+
+        self.upsert(tick, input);
+    }
+
     pub fn upsert(&mut self, tick: NetworkTick, input: I) {
         self.queue.insert(tick, input);
     }
@@ -75,6 +100,7 @@ where
         self.queue.retain(|tick, _| current.tick() >= tick.tick());
     }
 
+    /// Push an input into the queue
     pub fn push(&mut self, tick: NetworkTick, input: I) {
         self.queue.insert(tick, input);
         self.retain();
@@ -82,12 +108,7 @@ where
 
     /// Retain any in the queue that are within a buffer range.
     pub fn retain(&mut self) {
-        let newest = self
-            .queue
-            .keys()
-            .max()
-            .cloned()
-            .unwrap_or(NetworkTick::new(0));
+        let newest = self.queue.keys().max().cloned().unwrap_or_default();
 
         self.queue
             .retain(|tick, _| (newest.tick() as i64) - (tick.tick() as i64) < INPUT_RETAIN_BUFFER);
@@ -101,7 +122,7 @@ pub fn server_recv_input<I>(
 ) where
     I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
 {
-    queued_inputs.clean_old(tick);
+    queued_inputs.clean_old(*tick);
 
     for client_id in server.clients_id().into_iter() {
         while let Some(message) = server.receive_message(client_id, channel::CLIENT_INPUT) {

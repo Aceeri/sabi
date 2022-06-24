@@ -39,12 +39,7 @@ impl<C> SnapshotBuffer<C> {
     }
 
     pub fn clean_old(&mut self) {
-        let newest = self
-            .snapshots
-            .keys()
-            .max()
-            .cloned()
-            .unwrap_or(NetworkTick::new(0));
+        let newest = self.snapshots.keys().max().cloned().unwrap_or_default();
 
         self.snapshots
             .retain(|tick, _| newest.tick() - tick.tick() < SNAPSHOT_RETAIN_BUFFER);
