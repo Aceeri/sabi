@@ -61,8 +61,9 @@ where
 
         if app.world.contains_resource::<RenetClient>() {
             app.add_system(
-                crate::protocol::update::client_update_reliable::<C>
-                    .with_run_criteria(run_if_client_conected),
+                crate::protocol::update::client_update::<C>
+                    .run_if(client_connected)
+                    .after("client_recv_interest"),
             );
         }
     }
@@ -183,9 +184,10 @@ where
     fn build(&self, app: &mut App) {
         app.insert_resource(new_renet_client());
         app.add_plugin(RenetClientPlugin);
+        app.insert_resource(crate::protocol::update::UpdateMessages::new());
 
         app.add_system(
-            crate::protocol::update::client_recv_interest_reliable.run_if(client_connected),
+            crate::protocol::update::client_recv_interest.run_if(client_connected).label("client_recv_interest"),
         );
 
         app.add_system(

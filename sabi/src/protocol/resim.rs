@@ -3,7 +3,7 @@ use bevy::utils::HashMap;
 
 use super::{NetworkTick, Replicate, ServerEntity};
 
-pub const SNAPSHOT_RETAIN_BUFFER: u64 = 32;
+pub const SNAPSHOT_RETAIN_BUFFER: i64 = 32;
 
 #[derive(Deref, DerefMut, Debug)]
 pub struct ComponentSnapshot<C>(HashMap<ServerEntity, C>);
@@ -41,8 +41,9 @@ impl<C> SnapshotBuffer<C> {
     pub fn clean_old(&mut self) {
         let newest = self.snapshots.keys().max().cloned().unwrap_or_default();
 
-        self.snapshots
-            .retain(|tick, _| newest.tick() - tick.tick() < SNAPSHOT_RETAIN_BUFFER);
+        self.snapshots.retain(|tick, _| {
+            (newest.tick() as i64) - (tick.tick() as i64) < SNAPSHOT_RETAIN_BUFFER
+        });
     }
 }
 

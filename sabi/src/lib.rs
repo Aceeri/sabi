@@ -9,6 +9,7 @@ pub use sabi_derive::*;
 pub mod plugin;
 pub mod protocol;
 pub mod replicate;
+pub mod stage;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Client;

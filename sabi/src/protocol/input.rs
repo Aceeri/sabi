@@ -124,7 +124,6 @@ pub fn server_recv_input<I>(
         while let Some(message) = server.receive_message(client_id, channel::CLIENT_INPUT) {
             let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
             let input_message: ClientInputMessage<I> = bincode::deserialize(&decompressed).unwrap();
-            println!("{:?}", input_message.tick);
 
             queued_inputs.upsert(client_id, input_message.inputs);
         }

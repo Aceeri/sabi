@@ -1,6 +1,9 @@
 use std::fmt;
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{
+    prelude::*,
+    utils::{Entry, HashMap},
+};
 use bevy_renet::renet::{RenetClient, RenetServer};
 
 use crate::prelude::*;
@@ -15,6 +18,17 @@ use super::{
 pub struct UpdateMessage {
     pub tick: NetworkTick,
     pub entity_update: EntityUpdate,
+}
+
+impl UpdateMessage {
+    pub fn apply(&mut self, other: Self) {
+        if other.tick != self.tick {
+            panic!("attempt to apply update message on different tick");
+            return;
+        }
+
+        self.entity_update.apply(other.entity_update);
+    }
 }
 
 #[derive(Deref, DerefMut, Clone, Serialize, Deserialize)]
@@ -49,6 +63,19 @@ impl EntityUpdate {
     pub fn clear(&mut self) {
         self.updates.clear();
     }
+
+    pub fn apply(&mut self, other: Self) {
+        for (entity, components) in other.updates {
+            match self.entry(entity) {
+                Entry::Occupied(mut entry) => {
+                    entry.get_mut().apply(components);
+                }
+                Entry::Vacant(entry) => {
+                    entry.insert(components);
+                }
+            }
+        }
+    }
 }
 
 #[derive(Default, Deref, DerefMut, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -58,6 +85,10 @@ impl ComponentsUpdate {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
+
+    pub fn apply(&mut self, other: Self) {
+        self.0.extend(other.0);
+    }
 }
 
 impl EntityUpdate {
@@ -66,9 +97,48 @@ impl EntityUpdate {
     }
 }
 
-pub fn client_recv_interest_reliable(
+#[derive(Debug, Clone)]
+pub struct UpdateMessages {
+    messages: HashMap<NetworkTick, UpdateMessage>,
+}
+
+impl UpdateMessages {
+    pub fn new() -> Self {
+        Self {
+            messages: HashMap::new(),
+        }
+    }
+
+    pub fn get(&self, tick: &NetworkTick) -> Option<&UpdateMessage> {
+        self.messages.get(tick)
+    }
+
+    pub fn push(&mut self, message: UpdateMessage) {
+        match self.messages.entry(message.tick) {
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().apply(message);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(message);
+            }
+        }
+    }
+
+    /// Retain any in the queue that are within a buffer range.
+    pub fn retain(&mut self) {
+        let newest = self.messages.keys().max().cloned().unwrap_or_default();
+
+        self.messages.retain(|tick, _| {
+            (newest.tick() as i64) - (tick.tick() as i64)
+                < crate::protocol::resim::SNAPSHOT_RETAIN_BUFFER
+        });
+    }
+}
+
+pub fn client_recv_interest(
     mut commands: Commands,
     mut tick: ResMut<NetworkTick>,
+    mut server_updates: ResMut<UpdateMessages>,
     mut server_entities: ResMut<ServerEntities>,
     mut update_events: EventWriter<(ServerEntity, ComponentsUpdate)>,
     mut client: ResMut<RenetClient>,
@@ -77,7 +147,7 @@ pub fn client_recv_interest_reliable(
         let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
         let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
 
-        if message.tick.tick() as i64 - tick.tick() as i64 > 10 {
+        if (message.tick.tick() as i64 - tick.tick() as i64).abs() > 6 {
             *tick = NetworkTick::new(message.tick.tick() + 6);
         }
 
@@ -85,11 +155,12 @@ pub fn client_recv_interest_reliable(
             server_entities.spawn_or_get(&mut commands, *server_entity);
         }
 
+        server_updates.push(message.clone());
         update_events.send_batch(message.entity_update.updates.into_iter());
     }
 }
 
-pub fn client_update_reliable<C>(
+pub fn client_update<C>(
     mut commands: Commands,
     mut server_entities: ResMut<ServerEntities>,
     mut update_events: EventReader<(ServerEntity, ComponentsUpdate)>,
