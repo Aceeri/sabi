@@ -30,59 +30,64 @@ where
     }
 }
 
+#[derive(SystemLabel, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ServerQueueInterest;
+
 impl<C> Plugin for ReplicatePlugin<C>
 where
     C: 'static + Send + Sync + Component + Replicate + Clone,
 {
     fn build(&self, app: &mut App) {
-        if app.world.contains_resource::<RenetServer>() {
-            app.add_system(
-                crate::protocol::update::server_queue_interest::<C>
-                    .run_if(crate::protocol::on_network_tick)
-                    .run_if_resource_exists::<RenetServer>()
-                    .before("send_interests")
-                    .after("fetch_priority"),
-            );
+        app.add_system(
+            crate::protocol::update::server_queue_interest::<C>
+                .run_if(crate::protocol::on_network_tick)
+                .run_if_resource_exists::<RenetServer>()
+                .before("send_interests")
+                .after("fetch_priority"),
+        );
 
-            app.add_system(
-                crate::protocol::priority::server_bump_filtered::<C, With<C>, 1>
-                    .run_if(crate::protocol::on_network_tick)
-                    .run_if_resource_exists::<RenetServer>()
-                    .before("fetch_priority"),
-            );
+        app.add_system(
+            crate::protocol::priority::server_bump_filtered::<C, With<C>, 1>
+                .run_if(crate::protocol::on_network_tick)
+                .run_if_resource_exists::<RenetServer>()
+                .before("fetch_priority"),
+        );
 
-            app.add_system(
-                crate::protocol::priority::server_bump_filtered::<C, Changed<C>, 100>
-                    .run_if(crate::protocol::on_network_tick)
-                    .run_if_resource_exists::<RenetServer>()
-                    .before("fetch_priority"),
-            );
-        }
+        app.add_system(
+            crate::protocol::priority::server_bump_filtered::<C, Changed<C>, 100>
+                .run_if(crate::protocol::on_network_tick)
+                .run_if_resource_exists::<RenetServer>()
+                .before("fetch_priority"),
+        );
 
-        if app.world.contains_resource::<RenetClient>() {
-            app.add_system(
-                crate::protocol::update::client_update::<C>
-                    .run_if(client_connected)
-                    .after("client_recv_interest"),
-            );
-        }
+        app.add_system(
+            crate::protocol::update::client_update::<C>
+                .run_if_resource_exists::<RenetClient>()
+                .run_if(client_connected)
+                .after("client_recv_interest"),
+        );
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct SabiPlugin {
+pub struct SabiPlugin<I> {
+    pub phantom: PhantomData<I>, 
     pub tick_rate: Duration,
 }
 
-impl Default for SabiPlugin {
+impl<I> Default for SabiPlugin<I> {
     fn default() -> Self {
         Self {
+            phantom: PhantomData,
             tick_rate: tick_hz(32),
         }
     }
 }
 
-impl Plugin for SabiPlugin {
+impl<I> Plugin for SabiPlugin<I>
+where
+    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+{
     fn build(&self, app: &mut App) {
         app.register_type::<ServerEntity>();
 
@@ -96,6 +101,8 @@ impl Plugin for SabiPlugin {
         app.insert_resource(NetworkGameTimer::new(self.tick_rate));
 
         app.add_plugin(ReplicatePhysicsPlugin);
+        app.add_plugin(SabiServerPlugin::<I>::default());
+        app.add_plugin(SabiClientPlugin::<I>::default());
 
         app.add_system(tick_network);
 
@@ -122,7 +129,6 @@ where
     I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
 {
     fn build(&self, app: &mut App) {
-        app.insert_resource(crate::protocol::new_renet_server());
         app.insert_resource(crate::protocol::priority::PriorityAccumulator::new());
         app.insert_resource(crate::protocol::priority::ReplicateSizeEstimates::new());
         app.insert_resource(crate::protocol::priority::ReplicateMaxSize::default());
@@ -130,6 +136,7 @@ where
         app.insert_resource(crate::protocol::input::PerClientQueuedInputs::<I>::new());
 
         app.add_plugin(bevy_renet::RenetServerPlugin);
+        app.add_plugin(bevy_renet::RenetClientPlugin);
 
         app.add_system(
             crate::protocol::input::server_recv_input::<I>
@@ -182,16 +189,19 @@ where
     I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
 {
     fn build(&self, app: &mut App) {
-        app.insert_resource(new_renet_client());
         app.add_plugin(RenetClientPlugin);
         app.insert_resource(crate::protocol::update::UpdateMessages::new());
 
         app.add_system(
-            crate::protocol::update::client_recv_interest.run_if(client_connected).label("client_recv_interest"),
+            crate::protocol::update::client_recv_interest
+                .run_if_resource_exists::<RenetClient>()
+                .run_if(client_connected)
+                .label("client_recv_interest"),
         );
 
         app.add_system(
             crate::protocol::input::client_update_input_buffer::<I>
+                .run_if_resource_exists::<RenetClient>()
                 .run_if(client_connected)
                 .run_if(on_network_tick)
                 .label("client_update_input_buffer")
@@ -200,6 +210,7 @@ where
 
         app.add_system(
             crate::protocol::input::client_send_input::<I>
+                .run_if_resource_exists::<RenetClient>()
                 .run_if(client_connected)
                 .run_if(on_network_tick)
                 .label("client_send_input")

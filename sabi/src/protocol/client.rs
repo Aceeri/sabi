@@ -7,17 +7,16 @@ use std::time::SystemTime;
 
 use crate::protocol::*;
 
-pub fn new_renet_client() -> RenetClient {
-    let server_ip = my_internet_ip::get().unwrap();
-    let server_addr = format!("{}:{}", server_ip, crate::protocol::PORT)
+pub fn new_renet_client<S: AsRef<str>>(ip: S, port: u16) -> RenetClient {
+    let server_addr = format!("{}:{}", ip.as_ref(), port)
         .to_socket_addrs()
         .unwrap()
         .next()
         .unwrap();
 
-    println!("server addr: {:?}", server_addr);
+    info!("server addr: {:?}", server_addr);
     let protocol_id = protocol_id();
-    println!("protocol id: {:?}", protocol_id);
+    info!("protocol id: {:?}", protocol_id);
 
     let connection_config = renet_connection_config();
     let socket = UdpSocket::bind((localhost_ip(), 0)).unwrap();

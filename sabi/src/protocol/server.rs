@@ -10,62 +10,68 @@ use std::time::SystemTime;
 
 use crate::protocol::*;
 
-pub fn new_renet_server() -> RenetServer {
-    let local_ip =
+pub fn new_renet_server<S: AsRef<str>>(local_ip: S, mut public_ip: Option<String>, port: u16) -> RenetServer {
+    /*let local_ip =
         crate::protocol::public_ip().unwrap_or(crate::protocol::localhost_ip().to_owned());
-    let port = crate::protocol::PORT;
+    let port = crate::protocol::PORT;*/
+    let local_ip = local_ip.as_ref();
 
-    let mut public_ip = None;
+    if local_ip == "127.0.0.1" {
+        public_ip = Some("127.0.0.1".to_owned());
+    }
+
     // Set up ports using UPnP so people don't have to port forward.
-    match igd::search_gateway(igd::SearchOptions {
-        timeout: Some(Duration::from_secs(1)),
-        ..Default::default()
-    }) {
-        Err(ref err) => println!("Error: {}", err),
-        Ok(gateway) => {
-            let local_addr = local_ip.parse::<Ipv4Addr>().unwrap();
-            let local_addr = SocketAddrV4::new(local_addr, port);
+    if let None = public_ip {
+        match igd::search_gateway(igd::SearchOptions {
+            timeout: Some(Duration::from_secs(1)),
+            ..Default::default()
+        }) {
+            Err(ref err) => println!("Error: {}", err),
+            Ok(gateway) => {
+                let local_addr = local_ip.parse::<Ipv4Addr>().unwrap();
+                let local_addr = SocketAddrV4::new(local_addr, port);
 
-            match gateway.add_port(
-                igd::PortMappingProtocol::UDP,
-                port,
-                local_addr,
-                0,
-                "add_port example",
-            ) {
-                Ok(()) => {
-                    info!("Forwarded port {} to {}", port, local_addr);
+                match gateway.add_port(
+                    igd::PortMappingProtocol::UDP,
+                    port,
+                    local_addr,
+                    0,
+                    "add_port example",
+                ) {
+                    Ok(()) => {
+                        info!("Forwarded port {} to {}", port, local_addr);
+                    }
+                    Err(ref err) => {
+                        error!("failed to add port to gateway: {}", err);
+                    }
                 }
-                Err(ref err) => {
-                    error!("failed to add port to gateway: {}", err);
+
+                match gateway.get_external_ip() {
+                    Ok(external_ip) => {
+                        public_ip = Some(external_ip.to_string());
+                    }
+                    Err(ref err) => {
+                        error!("get_external_ip: {}", err);
+                    }
                 }
             }
+        };
+    }
 
-            match gateway.get_external_ip() {
-                Ok(external_ip) => {
-                    public_ip = Some(external_ip);
-                }
-                Err(ref err) => {
-                    error!("get_external_ip: {}", err);
-                }
-            }
+
+    if let None = public_ip {
+        if let Ok(ip) = my_internet_ip::get() {
+            public_ip = Some(ip.to_string());
         }
-    };
+    }
 
-    let external_ip = match public_ip {
-        Some(ip) => ip.to_string(),
-        None => my_internet_ip::get()
-            .expect("failed to get external ip, cannot start server")
-            .to_string(),
-    };
-
-    let server_addr = format!("{}:{}", external_ip, crate::protocol::PORT)
+    let server_addr = format!("{}:{}", public_ip.expect("expected a public ip"), port)
         .to_socket_addrs()
         .unwrap()
         .next()
         .unwrap();
 
-    let local_addr = format!("{}:{}", local_ip, crate::protocol::PORT)
+    let local_addr = format!("{}:{}", local_ip, port)
         .to_socket_addrs()
         .unwrap()
         .next()
