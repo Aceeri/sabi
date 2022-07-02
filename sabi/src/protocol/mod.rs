@@ -12,6 +12,7 @@ use bevy_renet::renet::{
 use std::{
     hash::{Hash, Hasher},
     net::UdpSocket,
+    time::Duration,
 };
 
 use serde::{Deserialize, Serialize};
@@ -29,7 +30,10 @@ pub mod update;
 
 pub use client::*;
 pub use server::*;
-pub use tick::{on_network_tick, tick_hz, tick_network_timer, increment_network_tick, NetworkGameTimer, NetworkTick};
+pub use tick::{
+    increment_network_tick, on_network_tick, tick_hz, tick_network_timer, NetworkGameTimer,
+    NetworkTick,
+};
 pub use update::{ComponentsUpdate, EntityUpdate};
 
 /// Private key for signing connect tokens for clients.
@@ -136,27 +140,28 @@ pub fn protocol_id() -> u64 {
 }
 
 pub fn renet_connection_config() -> RenetConnectionConfig {
-    let mut connection_config = RenetConnectionConfig::default();
-    connection_config.channels_config = vec![
-        ChannelConfig::Reliable(ReliableChannelConfig {
-            channel_id: channel::SERVER_MESSAGE,
-            ..Default::default()
-        }),
-        ChannelConfig::Unreliable(UnreliableChannelConfig {
-            channel_id: channel::CLIENT_INPUT,
-            ..Default::default()
-        }),
-        ChannelConfig::Unreliable(UnreliableChannelConfig {
-            channel_id: channel::COMPONENT,
-            ..Default::default()
-        }),
-        ChannelConfig::Block(BlockChannelConfig {
-            channel_id: channel::BLOCK,
-            ..Default::default()
-        }),
-    ];
-
-    connection_config
+    RenetConnectionConfig {
+        heartbeat_time: Duration::ZERO,
+        channels_config: vec![
+            ChannelConfig::Reliable(ReliableChannelConfig {
+                channel_id: channel::SERVER_MESSAGE,
+                ..Default::default()
+            }),
+            ChannelConfig::Unreliable(UnreliableChannelConfig {
+                channel_id: channel::CLIENT_INPUT,
+                ..Default::default()
+            }),
+            ChannelConfig::Unreliable(UnreliableChannelConfig {
+                channel_id: channel::COMPONENT,
+                ..Default::default()
+            }),
+            ChannelConfig::Block(BlockChannelConfig {
+                channel_id: channel::BLOCK,
+                ..Default::default()
+            }),
+        ],
+        ..Default::default()
+    }
 }
 
 /// Fetch our external ip using Cloudflare's DNS resolver.

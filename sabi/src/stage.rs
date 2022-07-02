@@ -13,14 +13,27 @@ use crate::protocol::NetworkTick;
 /// If you modify the step value, the fixed timestep driver stage will
 /// reconfigure itself to respect it. Your new timestep duration will be
 /// used starting from the next update cycle.
+#[derive(Debug, Clone)]
 pub struct NetworkSimulationInfo {
     pub step: Duration,
     pub accumulator: Duration,
+
+    pub accel: bool,
+    pub accel_step: Duration,
 }
 
 impl NetworkSimulationInfo {
+    pub fn new(timestep: Duration) -> Self {
+        Self {
+            step: timestep,
+            accumulator: Duration::default(),
+
+            accel: true,
+            accel_step: Duration::ZERO,
+        }
+    }
     /// The time duration of each timestep
-    pub fn timestep(&self) -> Duration {
+    pub fn static_timestep(&self) -> Duration {
         self.step
     }
     /// The number of steps per second (Hz)
@@ -35,6 +48,24 @@ impl NetworkSimulationInfo {
     /// (how many more (fractional) timesteps are left over in the accumulator)
     pub fn overstep(&self) -> f64 {
         self.accumulator.as_secs_f64() / self.step.as_secs_f64()
+    }
+
+    pub fn accel(&mut self, percentage: f64) {
+        self.accel = true;
+        self.accel_step = self.step.mul_f64(percentage);
+    }
+
+    pub fn decel(&mut self, percentage: f64) {
+        self.accel = false;
+        self.accel_step = self.step.mul_f64(percentage);
+    }
+
+    pub fn timestep(&self) -> Duration {
+        if self.accel {
+            self.step.saturating_add(self.accel_step)
+        } else {
+            self.step.saturating_sub(self.accel_step)
+        }
     }
 }
 
@@ -63,8 +94,7 @@ pub enum NetworkCoreStage {
 /// A good place to add the `NetworkSimulationStage` is usually before
 /// `CoreStage::Update`.
 pub struct NetworkSimulationStage {
-    pub step: Duration,
-    pub accumulator: Duration,
+    pub info: NetworkSimulationInfo,
     /// Rewind the simulation back to the saved snapshot.
     pub rewind: SystemStage,
     /// Apply updates received from the server if any.
@@ -77,11 +107,10 @@ impl NetworkSimulationStage {
     /// Create a new empty `NetworkSimulationStage` with no child stages
     pub fn new(timestep: Duration) -> Self {
         Self {
-            step: timestep,
-            accumulator: Duration::default(),
+            info: NetworkSimulationInfo::new(timestep),
             rewind: SystemStage::parallel(),
             apply_updates: SystemStage::parallel(),
-            schedule: Schedule::default()
+            schedule: Schedule::default(),
         }
     }
 }
@@ -91,7 +120,16 @@ pub struct Rewind(pub NetworkTick);
 
 impl Stage for NetworkSimulationStage {
     fn run(&mut self, world: &mut World) {
-        self.accumulator += {
+        if world.is_resource_changed::<NetworkSimulationInfo>() {
+            if let Some(info) = world.get_resource::<NetworkSimulationInfo>() {
+                self.info = info.clone();
+            }
+        }
+
+        //info!("static: {:?}", self.info.static_timestep());
+        //info!("accel: {:?}", self.info.timestep());
+
+        self.info.accumulator += {
             let time = world.get_resource::<Time>();
             if let Some(time) = time {
                 time.delta()
@@ -100,29 +138,41 @@ impl Stage for NetworkSimulationStage {
             }
         };
 
+        let mut catchup_frames = 0;
+        let mut accumulated_frames = 0;
 
         // TODO: handle the edge case where we don't have a snapshot
-        let current_tick = world.get_resource::<NetworkTick>().expect("expected network tick").clone();
+        let current_tick = world
+            .get_resource::<NetworkTick>()
+            .expect("expected network tick")
+            .clone();
         if let Some(rewind) = world.get_resource::<Rewind>() {
             let rewind_tick = rewind.0.clone();
-            assert!(rewind_tick.tick() < current_tick.tick());
 
-            self.rewind.run(world);
-            world.remove_resource::<Rewind>();
+            if rewind_tick.tick() < current_tick.tick() {
+                self.rewind.run(world);
 
-            for tick in rewind_tick.tick()..=current_tick.tick() {
-                let catchup_tick = NetworkTick::new(tick);
-                world.insert_resource(catchup_tick);
-                self.apply_updates.run(world);
+                world.insert_resource(rewind_tick);
 
-                self.schedule.run(world);
+                for tick in rewind_tick.tick()..current_tick.tick() {
+                    self.apply_updates.run(world);
+                    self.schedule.run(world);
+                    catchup_frames += 1;
+                }
             }
+
+            world.remove_resource::<Rewind>();
         }
 
-        while self.accumulator >= self.step {
-            self.accumulator -= self.step;
+        while self.info.accumulator >= self.info.timestep() {
+            self.info.accumulator -= self.info.timestep();
 
             self.schedule.run(world);
+            accumulated_frames += 1;
+        }
+
+        if accumulated_frames + catchup_frames > 0 {
+            //info!("{} - {}", accumulated_frames, catchup_frames);
         }
     }
 }
@@ -130,8 +180,18 @@ impl Stage for NetworkSimulationStage {
 pub trait NetworkSimulationAppExt {
     fn get_network_stage(&mut self) -> &mut NetworkSimulationStage;
     fn add_network_stage<S: Stage>(&mut self, label: impl StageLabel, stage: S) -> &mut Self;
-    fn add_network_stage_after<S: Stage>(&mut self, target: impl StageLabel, label: impl StageLabel, stage: S) -> &mut Self;
-    fn add_network_stage_before<S: Stage>(&mut self, target: impl StageLabel, label: impl StageLabel, stage: S) -> &mut Self;
+    fn add_network_stage_after<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S,
+    ) -> &mut Self;
+    fn add_network_stage_before<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S,
+    ) -> &mut Self;
 
     fn network_stage<T: Stage, F: FnOnce(&mut T) -> &mut T>(
         &mut self,
@@ -139,7 +199,10 @@ pub trait NetworkSimulationAppExt {
         func: F,
     ) -> &mut Self;
 
-    fn add_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self;
+    fn add_network_system<Params>(
+        &mut self,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self;
 
     fn add_network_system_set(&mut self, system_set: SystemSet) -> &mut Self;
 
@@ -155,14 +218,22 @@ pub trait NetworkSimulationAppExt {
         system_set: SystemSet,
     ) -> &mut Self;
 
-    fn add_rewind_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self;
+    fn add_rewind_network_system<Params>(
+        &mut self,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self;
 
-    fn add_apply_update_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self;
+    fn add_apply_update_network_system<Params>(
+        &mut self,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self;
 }
 
 impl NetworkSimulationAppExt for App {
     fn get_network_stage(&mut self) -> &mut NetworkSimulationStage {
-        self.schedule.get_stage_mut(&NetworkStage).expect("expected NetworkStage")
+        self.schedule
+            .get_stage_mut(&NetworkStage)
+            .expect("expected NetworkStage")
     }
 
     fn add_network_stage<S: Stage>(&mut self, label: impl StageLabel, stage: S) -> &mut Self {
@@ -176,7 +247,9 @@ impl NetworkSimulationAppExt for App {
         label: impl StageLabel,
         stage: S,
     ) -> &mut Self {
-        self.get_network_stage().schedule.add_stage_after(target, label, stage);
+        self.get_network_stage()
+            .schedule
+            .add_stage_after(target, label, stage);
         self
     }
 
@@ -186,7 +259,9 @@ impl NetworkSimulationAppExt for App {
         label: impl StageLabel,
         stage: S,
     ) -> &mut Self {
-        self.get_network_stage().schedule.add_stage_before(target, label, stage);
+        self.get_network_stage()
+            .schedule
+            .add_stage_before(target, label, stage);
         self
     }
 
@@ -199,7 +274,10 @@ impl NetworkSimulationAppExt for App {
         self
     }
 
-    fn add_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self {
+    fn add_network_system<Params>(
+        &mut self,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self {
         self.add_system_to_network_stage(NetworkCoreStage::Update, system)
     }
 
@@ -212,7 +290,9 @@ impl NetworkSimulationAppExt for App {
         stage_label: impl StageLabel,
         system: impl IntoSystemDescriptor<Params>,
     ) -> &mut Self {
-        self.get_network_stage().schedule.add_system_to_stage(stage_label, system);
+        self.get_network_stage()
+            .schedule
+            .add_system_to_stage(stage_label, system);
         self
     }
 
@@ -226,12 +306,18 @@ impl NetworkSimulationAppExt for App {
         self
     }
 
-    fn add_rewind_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self {
+    fn add_rewind_network_system<Params>(
+        &mut self,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self {
         self.get_network_stage().rewind.add_system(system);
         self
     }
 
-    fn add_apply_update_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self {
+    fn add_apply_update_network_system<Params>(
+        &mut self,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self {
         self.get_network_stage().apply_updates.add_system(system);
         self
     }

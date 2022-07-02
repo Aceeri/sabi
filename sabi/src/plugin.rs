@@ -14,7 +14,10 @@ use crate::{
         update::{server_send_interest, EntityUpdate},
     },
     replicate::physics::ReplicatePhysicsPlugin,
-    stage::{NetworkCoreStage, NetworkSimulationAppExt, NetworkSimulationStage, NetworkStage},
+    stage::{
+        NetworkCoreStage, NetworkSimulationAppExt, NetworkSimulationInfo, NetworkSimulationStage,
+        NetworkStage,
+    },
     Replicate,
 };
 
@@ -131,6 +134,7 @@ where
         app.insert_resource(ServerEntities::default());
         app.insert_resource(EntityUpdate::new());
         app.insert_resource(NetworkTick::default());
+        app.insert_resource(NetworkSimulationInfo::new(self.tick_rate));
 
         app.insert_resource(Lobby::default());
         app.insert_resource(NetworkGameTimer::new(self.tick_rate));
@@ -177,7 +181,7 @@ where
         app.add_system(
             crate::protocol::input::server_recv_input::<I>
                 .run_if_resource_exists::<RenetServer>()
-                .run_if(on_network_tick)
+                //.run_if(on_network_tick)
                 .label("recv_input"),
         );
 
@@ -239,8 +243,7 @@ where
             crate::protocol::update::client_apply_server_update
                 .run_if_resource_exists::<RenetClient>()
                 .run_if(client_connected)
-                .label("client_apply_server_update")
-                .after("client_recv_interest"),
+                .label("client_apply_server_update"),
         );
 
         app.add_system(

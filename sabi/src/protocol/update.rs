@@ -6,7 +6,10 @@ use bevy::{
 };
 use bevy_renet::renet::{RenetClient, RenetServer};
 
-use crate::{prelude::*, stage::Rewind};
+use crate::{
+    prelude::*,
+    stage::{NetworkSimulationInfo, Rewind},
+};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -137,19 +140,45 @@ impl UpdateMessages {
 
 pub fn client_recv_interest(
     mut commands: Commands,
+    mut network_sim_info: ResMut<NetworkSimulationInfo>,
     mut tick: ResMut<NetworkTick>,
     mut server_updates: ResMut<UpdateMessages>,
     mut server_entities: ResMut<ServerEntities>,
     mut client: ResMut<RenetClient>,
 ) {
+    let mut rewind: Option<NetworkTick> = None;
+
     while let Some(message) = client.receive_message(channel::COMPONENT) {
         let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
         let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
 
-        if (message.tick.tick() as i64 - tick.tick() as i64).abs() > 6 {
+        let diff = tick.tick() as i64 - message.tick.tick() as i64;
+        /*
+               info!(
+                   "tick {:?} - message {:?} = diff: {:?}",
+                   tick.tick(),
+                   message.tick.tick(),
+                   diff
+               );
+        */
+        if diff.abs() > 20 {
             *tick = NetworkTick::new(message.tick.tick() + 6);
-        } else if message.tick.tick() < tick.tick() {
-            commands.insert_resource(Rewind(message.tick));
+        }
+
+        if diff > 6 {
+            network_sim_info.decel(0.01);
+        } else if diff < 6 {
+            network_sim_info.accel(0.01);
+        }
+
+        match rewind {
+            Some(ref mut rewind) if message.tick.tick() < rewind.tick() => {
+                *rewind = message.tick;
+            }
+            None => {
+                rewind = Some(message.tick);
+            }
+            _ => {}
         }
 
         for (server_entity, _) in message.entity_update.iter() {
@@ -157,6 +186,10 @@ pub fn client_recv_interest(
         }
 
         server_updates.push(message);
+    }
+
+    if let Some(rewind) = rewind {
+        commands.insert_resource(Rewind(rewind));
     }
 }
 
