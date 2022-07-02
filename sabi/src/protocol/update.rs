@@ -140,7 +140,6 @@ pub fn client_recv_interest(
     mut tick: ResMut<NetworkTick>,
     mut server_updates: ResMut<UpdateMessages>,
     mut server_entities: ResMut<ServerEntities>,
-    mut update_events: EventWriter<(ServerEntity, ComponentsUpdate)>,
     mut client: ResMut<RenetClient>,
 ) {
     while let Some(message) = client.receive_message(channel::COMPONENT) {
@@ -157,8 +156,17 @@ pub fn client_recv_interest(
             server_entities.spawn_or_get(&mut commands, *server_entity);
         }
 
-        server_updates.push(message.clone());
-        update_events.send_batch(message.entity_update.updates.into_iter());
+        server_updates.push(message);
+    }
+}
+
+pub fn client_apply_server_update(
+    tick: Res<NetworkTick>,
+    server_updates: Res<UpdateMessages>,
+    mut update_events: EventWriter<(ServerEntity, ComponentsUpdate)>,
+) {
+    if let Some(update) = server_updates.get(&*tick) {
+        update_events.send_batch(update.entity_update.updates.clone().into_iter());
     }
 }
 

@@ -9,9 +9,13 @@ use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    protocol::{update::{server_send_interest, EntityUpdate}, resim::SnapshotBuffer},
+    protocol::{
+        resim::SnapshotBuffer,
+        update::{server_send_interest, EntityUpdate},
+    },
     replicate::physics::ReplicatePhysicsPlugin,
-    Replicate, stage::{NetworkSimulationAppExt, NetworkStage, NetworkSimulationStage, NetworkCoreStage},
+    stage::{NetworkCoreStage, NetworkSimulationAppExt, NetworkSimulationStage, NetworkStage},
+    Replicate,
 };
 
 use crate::prelude::*;
@@ -62,22 +66,20 @@ where
                 .before("fetch_priority"),
         );
 
-        app.add_system(
+        app.add_apply_update_network_system(
             crate::protocol::update::client_update::<C>
                 .run_if_resource_exists::<RenetClient>()
                 .run_if(client_connected)
-                .after("client_recv_interest"),
+                .after("client_apply_server_update"),
         );
 
-        app.add_rewind_network_system(
-            crate::protocol::resim::rewind::<C>
-        );
+        app.add_rewind_network_system(crate::protocol::resim::rewind::<C>);
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct SabiPlugin<I> {
-    pub phantom: PhantomData<I>, 
+    pub phantom: PhantomData<I>,
     pub tick_rate: Duration,
 }
 
@@ -98,13 +100,33 @@ where
         app.register_type::<ServerEntity>();
 
         app.add_event::<(ServerEntity, ComponentsUpdate)>();
-        app.add_stage_before(CoreStage::Update, NetworkStage, NetworkSimulationStage::new(self.tick_rate));
+        app.add_stage_before(
+            CoreStage::Update,
+            NetworkStage,
+            NetworkSimulationStage::new(self.tick_rate),
+        );
 
         app.add_network_stage(NetworkCoreStage::Update, SystemStage::parallel());
-        app.add_network_stage_before(NetworkCoreStage::Update, NetworkCoreStage::PreUpdate, SystemStage::parallel());
-        app.add_network_stage_before(NetworkCoreStage::PreUpdate, NetworkCoreStage::First, SystemStage::parallel());
-        app.add_network_stage_after(NetworkCoreStage::Update, NetworkCoreStage::PostUpdate, SystemStage::parallel());
-        app.add_network_stage_after(NetworkCoreStage::PostUpdate, NetworkCoreStage::Last, SystemStage::parallel());
+        app.add_network_stage_before(
+            NetworkCoreStage::Update,
+            NetworkCoreStage::PreUpdate,
+            SystemStage::parallel(),
+        );
+        app.add_network_stage_before(
+            NetworkCoreStage::PreUpdate,
+            NetworkCoreStage::First,
+            SystemStage::parallel(),
+        );
+        app.add_network_stage_after(
+            NetworkCoreStage::Update,
+            NetworkCoreStage::PostUpdate,
+            SystemStage::parallel(),
+        );
+        app.add_network_stage_after(
+            NetworkCoreStage::PostUpdate,
+            NetworkCoreStage::Last,
+            SystemStage::parallel(),
+        );
 
         app.insert_resource(ServerEntities::default());
         app.insert_resource(EntityUpdate::new());
@@ -211,6 +233,14 @@ where
                 .run_if_resource_exists::<RenetClient>()
                 .run_if(client_connected)
                 .label("client_recv_interest"),
+        );
+
+        app.add_apply_update_network_system(
+            crate::protocol::update::client_apply_server_update
+                .run_if_resource_exists::<RenetClient>()
+                .run_if(client_connected)
+                .label("client_apply_server_update")
+                .after("client_recv_interest"),
         );
 
         app.add_system(
