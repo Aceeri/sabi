@@ -2,6 +2,10 @@ use std::time::Duration;
 
 use bevy::core::Time;
 use bevy::ecs::prelude::*;
+use bevy::ecs::schedule::IntoSystemDescriptor;
+use bevy::prelude::*;
+
+use crate::protocol::NetworkTick;
 
 /// This type will be available as a resource, while a fixed timestep stage
 /// runs, to provide info about the current status of the fixed timestep.
@@ -34,6 +38,18 @@ impl NetworkSimulationInfo {
     }
 }
 
+#[derive(Debug, StageLabel, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct NetworkStage;
+
+#[derive(Debug, StageLabel, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NetworkCoreStage {
+    First,
+    PreUpdate,
+    Update,
+    PostUpdate,
+    Last,
+}
+
 /// A Stage that runs a number of child stages with a fixed timestep
 ///
 /// You can set the timestep duration. Every frame update, the time delta
@@ -47,37 +63,31 @@ impl NetworkSimulationInfo {
 /// A good place to add the `NetworkSimulationStage` is usually before
 /// `CoreStage::Update`.
 pub struct NetworkSimulationStage {
-    step: Duration,
-    accumulator: Duration,
-    stages: Vec<Box<dyn Stage>>,
+    pub step: Duration,
+    pub accumulator: Duration,
+    /// Rewind the simulation back to the saved snapshot.
+    pub rewind: SystemStage,
+    /// Apply updates received from the server if any.
+    pub apply_updates: SystemStage,
+    /// Game simulation that will be rewound.
+    pub schedule: Schedule,
 }
 
 impl NetworkSimulationStage {
-    /// Helper to create a `NetworkSimulationStage` with a single child stage
-    pub fn from_stage<S: Stage>(timestep: Duration, stage: S) -> Self {
-        Self::new(timestep).with_stage(stage)
-    }
-
     /// Create a new empty `NetworkSimulationStage` with no child stages
     pub fn new(timestep: Duration) -> Self {
         Self {
             step: timestep,
             accumulator: Duration::default(),
-            stages: Vec::new(),
+            rewind: SystemStage::parallel(),
+            apply_updates: SystemStage::parallel(),
+            schedule: Schedule::default()
         }
     }
-
-    /// Add a child stage
-    pub fn add_stage<S: Stage>(&mut self, stage: S) {
-        self.stages.push(Box::new(stage));
-    }
-
-    /// Builder method for adding a child stage
-    pub fn with_stage<S: Stage>(mut self, stage: S) -> Self {
-        self.add_stage(stage);
-        self
-    }
 }
+
+#[derive(Debug, Clone)]
+pub struct Rewind(pub NetworkTick);
 
 impl Stage for NetworkSimulationStage {
     fn run(&mut self, world: &mut World) {
@@ -90,21 +100,139 @@ impl Stage for NetworkSimulationStage {
             }
         };
 
-        while self.accumulator >= self.step {
-            self.accumulator -= self.step;
-            for stage in self.stages.iter_mut() {
-                world.insert_resource(NetworkSimulationInfo {
-                    step: self.step,
-                    accumulator: self.accumulator,
-                });
-                stage.run(world);
-                if let Some(info) = world.remove_resource::<NetworkSimulationInfo>() {
-                    // update our actual step duration, in case the user has
-                    // modified it in the info resource
-                    self.step = info.step;
-                    self.accumulator = info.accumulator;
-                }
+
+        // TODO: handle the edge case where we don't have a snapshot
+        let current_tick = world.get_resource::<NetworkTick>().expect("expected network tick").clone();
+        if let Some(rewind) = world.get_resource::<Rewind>() {
+            let rewind_tick = rewind.0.clone();
+            assert!(rewind_tick.tick() < current_tick.tick());
+
+            self.rewind.run(world);
+            world.remove_resource::<Rewind>();
+
+            for tick in rewind_tick.tick()..=current_tick.tick() {
+                let catchup_tick = NetworkTick::new(tick);
+                world.insert_resource(catchup_tick);
+                self.apply_updates.run(world);
+
+                self.schedule.run(world);
             }
         }
+
+        while self.accumulator >= self.step {
+            self.accumulator -= self.step;
+
+            self.schedule.run(world);
+        }
+    }
+}
+
+pub trait NetworkSimulationAppExt {
+    fn get_network_stage(&mut self) -> &mut NetworkSimulationStage;
+    fn add_network_stage<S: Stage>(&mut self, label: impl StageLabel, stage: S) -> &mut Self;
+    fn add_network_stage_after<S: Stage>(&mut self, target: impl StageLabel, label: impl StageLabel, stage: S) -> &mut Self;
+    fn add_network_stage_before<S: Stage>(&mut self, target: impl StageLabel, label: impl StageLabel, stage: S) -> &mut Self;
+
+    fn network_stage<T: Stage, F: FnOnce(&mut T) -> &mut T>(
+        &mut self,
+        label: impl StageLabel,
+        func: F,
+    ) -> &mut Self;
+
+    fn add_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self;
+
+    fn add_network_system_set(&mut self, system_set: SystemSet) -> &mut Self;
+
+    fn add_system_to_network_stage<Params>(
+        &mut self,
+        stage_label: impl StageLabel,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self;
+
+    fn add_system_set_to_network_stage(
+        &mut self,
+        stage_label: impl StageLabel,
+        system_set: SystemSet,
+    ) -> &mut Self;
+
+    fn add_rewind_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self;
+
+    fn add_apply_update_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self;
+}
+
+impl NetworkSimulationAppExt for App {
+    fn get_network_stage(&mut self) -> &mut NetworkSimulationStage {
+        self.schedule.get_stage_mut(&NetworkStage).expect("expected NetworkStage")
+    }
+
+    fn add_network_stage<S: Stage>(&mut self, label: impl StageLabel, stage: S) -> &mut Self {
+        self.get_network_stage().schedule.add_stage(label, stage);
+        self
+    }
+
+    fn add_network_stage_after<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S,
+    ) -> &mut Self {
+        self.get_network_stage().schedule.add_stage_after(target, label, stage);
+        self
+    }
+
+    fn add_network_stage_before<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S,
+    ) -> &mut Self {
+        self.get_network_stage().schedule.add_stage_before(target, label, stage);
+        self
+    }
+
+    fn network_stage<T: Stage, F: FnOnce(&mut T) -> &mut T>(
+        &mut self,
+        label: impl StageLabel,
+        func: F,
+    ) -> &mut Self {
+        self.get_network_stage().schedule.stage(label, func);
+        self
+    }
+
+    fn add_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self {
+        self.add_system_to_network_stage(NetworkCoreStage::Update, system)
+    }
+
+    fn add_network_system_set(&mut self, system_set: SystemSet) -> &mut Self {
+        self.add_system_set_to_network_stage(NetworkCoreStage::Update, system_set)
+    }
+
+    fn add_system_to_network_stage<Params>(
+        &mut self,
+        stage_label: impl StageLabel,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self {
+        self.get_network_stage().schedule.add_system_to_stage(stage_label, system);
+        self
+    }
+
+    fn add_system_set_to_network_stage(
+        &mut self,
+        stage_label: impl StageLabel,
+        system_set: SystemSet,
+    ) -> &mut Self {
+        self.schedule
+            .add_system_set_to_stage(stage_label, system_set);
+        self
+    }
+
+    fn add_rewind_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self {
+        self.get_network_stage().rewind.add_system(system);
+        self
+    }
+
+    fn add_apply_update_network_system<Params>(&mut self, system: impl IntoSystemDescriptor<Params>) -> &mut Self {
+        self.get_network_stage().apply_updates.add_system(system);
+        self
     }
 }

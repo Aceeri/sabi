@@ -9,9 +9,9 @@ use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    protocol::update::{server_send_interest, EntityUpdate},
+    protocol::{update::{server_send_interest, EntityUpdate}, resim::SnapshotBuffer},
     replicate::physics::ReplicatePhysicsPlugin,
-    Replicate,
+    Replicate, stage::{NetworkSimulationAppExt, NetworkStage, NetworkSimulationStage, NetworkCoreStage},
 };
 
 use crate::prelude::*;
@@ -38,6 +38,8 @@ where
     C: 'static + Send + Sync + Component + Replicate + Clone,
 {
     fn build(&self, app: &mut App) {
+        app.insert_resource(SnapshotBuffer::<C>::new());
+
         app.add_system(
             crate::protocol::update::server_queue_interest::<C>
                 .run_if(crate::protocol::on_network_tick)
@@ -66,6 +68,10 @@ where
                 .run_if(client_connected)
                 .after("client_recv_interest"),
         );
+
+        app.add_rewind_network_system(
+            crate::protocol::resim::rewind::<C>
+        );
     }
 }
 
@@ -92,6 +98,13 @@ where
         app.register_type::<ServerEntity>();
 
         app.add_event::<(ServerEntity, ComponentsUpdate)>();
+        app.add_stage_before(CoreStage::Update, NetworkStage, NetworkSimulationStage::new(self.tick_rate));
+
+        app.add_network_stage(NetworkCoreStage::Update, SystemStage::parallel());
+        app.add_network_stage_before(NetworkCoreStage::Update, NetworkCoreStage::PreUpdate, SystemStage::parallel());
+        app.add_network_stage_before(NetworkCoreStage::PreUpdate, NetworkCoreStage::First, SystemStage::parallel());
+        app.add_network_stage_after(NetworkCoreStage::Update, NetworkCoreStage::PostUpdate, SystemStage::parallel());
+        app.add_network_stage_after(NetworkCoreStage::PostUpdate, NetworkCoreStage::Last, SystemStage::parallel());
 
         app.insert_resource(ServerEntities::default());
         app.insert_resource(EntityUpdate::new());
@@ -104,7 +117,8 @@ where
         app.add_plugin(SabiServerPlugin::<I>::default());
         app.add_plugin(SabiClientPlugin::<I>::default());
 
-        app.add_system(tick_network);
+        app.add_system(tick_network_timer);
+        app.add_network_system(increment_network_tick);
 
         app.add_plugin(ReplicatePlugin::<Transform>::default());
         app.add_plugin(ReplicatePlugin::<GlobalTransform>::default());

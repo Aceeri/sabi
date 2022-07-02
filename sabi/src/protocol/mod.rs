@@ -29,7 +29,7 @@ pub mod update;
 
 pub use client::*;
 pub use server::*;
-pub use tick::{on_network_tick, tick_hz, tick_network, NetworkGameTimer, NetworkTick};
+pub use tick::{on_network_tick, tick_hz, tick_network_timer, increment_network_tick, NetworkGameTimer, NetworkTick};
 pub use update::{ComponentsUpdate, EntityUpdate};
 
 /// Private key for signing connect tokens for clients.

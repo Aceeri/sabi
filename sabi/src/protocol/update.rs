@@ -6,7 +6,7 @@ use bevy::{
 };
 use bevy_renet::renet::{RenetClient, RenetServer};
 
-use crate::prelude::*;
+use crate::{prelude::*, stage::Rewind};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -149,6 +149,8 @@ pub fn client_recv_interest(
 
         if (message.tick.tick() as i64 - tick.tick() as i64).abs() > 6 {
             *tick = NetworkTick::new(message.tick.tick() + 6);
+        } else if message.tick.tick() < tick.tick() {
+            commands.insert_resource(Rewind(message.tick));
         }
 
         for (server_entity, _) in message.entity_update.iter() {

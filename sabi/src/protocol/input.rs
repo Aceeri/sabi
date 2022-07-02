@@ -176,3 +176,15 @@ pub fn client_update_input_buffer<I>(
 {
     input_buffer.push(*tick, player_input.clone());
 }
+
+pub fn client_apply_input_buffer<I>(
+    tick: Res<NetworkTick>,
+    mut player_input: ResMut<I>,
+    input_buffer: Res<QueuedInputs<I>>,
+) where
+    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+{
+    if let Some(input) = input_buffer.get(&*tick) {
+        *player_input = input.clone();
+    }
+}

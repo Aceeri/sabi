@@ -1,12 +1,14 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, ecs::entity::Entities};
 use bevy::utils::HashMap;
+
+use crate::stage::Rewind;
 
 use super::{NetworkTick, Replicate, ServerEntity};
 
 pub const SNAPSHOT_RETAIN_BUFFER: i64 = 32;
 
 #[derive(Deref, DerefMut, Debug)]
-pub struct ComponentSnapshot<C>(HashMap<ServerEntity, C>);
+pub struct ComponentSnapshot<C>(HashMap<Entity, C>);
 
 impl<C> Default for ComponentSnapshot<C> {
     fn default() -> Self {
@@ -50,14 +52,32 @@ impl<C> SnapshotBuffer<C> {
 pub fn store_snapshot<C>(
     tick: Res<NetworkTick>,
     mut snapshots: ResMut<SnapshotBuffer<C>>,
-    query: Query<(&ServerEntity, &C)>,
+    query: Query<(Entity, &C)>,
 ) where
     C: 'static + Send + Sync + Component + Replicate + Clone,
 {
     let mut snapshot = ComponentSnapshot::default();
-    for (server_entity, component) in query.iter() {
-        snapshot.insert(*server_entity, component.clone());
+    for (entity, component) in query.iter() {
+        snapshot.insert(entity, component.clone());
     }
 
     snapshots.push(*tick, snapshot)
+}
+
+
+pub fn rewind<C>(
+    mut commands: Commands,
+    entities: &Entities,
+    tick: Res<NetworkTick>,
+    snapshots: Res<SnapshotBuffer<C>>,
+) where
+    C: 'static + Send + Sync + Component + Replicate + Clone,
+{
+    if let Some(snapshot) = snapshots.snapshots.get(&*tick) {
+        for (entity, component) in snapshot.0.iter() {
+            if entities.contains(*entity) {
+                commands.entity(*entity).insert(component.clone());
+            }
+        }
+    }
 }
