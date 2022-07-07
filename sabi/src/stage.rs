@@ -122,7 +122,8 @@ impl Stage for NetworkSimulationStage {
     fn run(&mut self, world: &mut World) {
         if world.is_resource_changed::<NetworkSimulationInfo>() {
             if let Some(info) = world.get_resource::<NetworkSimulationInfo>() {
-                self.info = info.clone();
+                self.info.accel = info.accel;
+                self.info.accel_step = info.accel_step;
             }
         }
 
@@ -164,6 +165,7 @@ impl Stage for NetworkSimulationStage {
             world.remove_resource::<Rewind>();
         }
 
+        //info!("{:?}", self.info);
         while self.info.accumulator >= self.info.timestep() {
             self.info.accumulator -= self.info.timestep();
 

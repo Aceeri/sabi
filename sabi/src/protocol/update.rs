@@ -17,6 +17,8 @@ use super::{
     NetworkTick,
 };
 
+pub const FRAME_BUFFER: u64 = 2;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateMessage {
     pub tick: NetworkTick,
@@ -116,6 +118,10 @@ impl UpdateMessages {
         self.messages.get(tick)
     }
 
+    pub fn latest(&self) -> Option<&NetworkTick> {
+        self.messages.keys().max()
+    }
+
     pub fn push(&mut self, message: UpdateMessage) {
         match self.messages.entry(message.tick) {
             Entry::Occupied(mut entry) => {
@@ -153,21 +159,14 @@ pub fn client_recv_interest(
         let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
 
         let diff = tick.tick() as i64 - message.tick.tick() as i64;
-        /*
-               info!(
-                   "tick {:?} - message {:?} = diff: {:?}",
-                   tick.tick(),
-                   message.tick.tick(),
-                   diff
-               );
-        */
-        if diff.abs() > 20 {
-            *tick = NetworkTick::new(message.tick.tick() + 6);
+        if diff < 0 {
+            error!("falling behind server, hard stepping tick");
+            *tick = NetworkTick::new(message.tick.tick() + FRAME_BUFFER);
         }
 
-        if diff > 6 {
+        if diff > FRAME_BUFFER as i64 {
             network_sim_info.decel(0.01);
-        } else if diff < 6 {
+        } else if diff < FRAME_BUFFER as i64 {
             network_sim_info.accel(0.01);
         }
 
