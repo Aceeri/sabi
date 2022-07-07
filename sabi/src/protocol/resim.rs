@@ -1,5 +1,5 @@
-use bevy::{prelude::*, ecs::entity::Entities};
 use bevy::utils::HashMap;
+use bevy::{ecs::entity::Entities, prelude::*};
 
 use crate::stage::Rewind;
 
@@ -64,7 +64,6 @@ pub fn store_snapshot<C>(
     snapshots.push(*tick, snapshot)
 }
 
-
 pub fn rewind<C>(
     mut commands: Commands,
     entities: &Entities,
@@ -79,5 +78,10 @@ pub fn rewind<C>(
                 commands.entity(*entity).insert(component.clone());
             }
         }
+    } else {
+        error!(
+            "no snapshot for component: {:?}",
+            std::any::type_name::<C>()
+        );
     }
 }

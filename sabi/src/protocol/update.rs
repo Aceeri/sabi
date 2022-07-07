@@ -135,7 +135,7 @@ impl UpdateMessages {
 
     /// Retain any in the queue that are within a buffer range.
     pub fn retain(&mut self) {
-        let newest = self.messages.keys().max().cloned().unwrap_or_default();
+        let newest = self.latest().cloned().unwrap_or_default();
 
         self.messages.retain(|tick, _| {
             (newest.tick() as i64) - (tick.tick() as i64)
@@ -167,7 +167,7 @@ pub fn client_recv_interest(
         if diff > FRAME_BUFFER as i64 {
             network_sim_info.decel(0.01);
         } else if diff < FRAME_BUFFER as i64 {
-            network_sim_info.accel(0.01);
+            network_sim_info.accel(0.02);
         }
 
         match rewind {

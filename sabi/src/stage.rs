@@ -130,6 +130,9 @@ impl Stage for NetworkSimulationStage {
             }
         }
 
+        let mut catchup_frames = 0;
+        let mut accumulated_frames = 0;
+
         self.info.accumulator += {
             let time = world.get_resource::<Time>();
             if let Some(time) = time {
@@ -138,17 +141,6 @@ impl Stage for NetworkSimulationStage {
                 return;
             }
         };
-
-        let mut catchup_frames = 0;
-        let mut accumulated_frames = 0;
-
-        while self.info.accumulator >= self.info.timestep() {
-            self.info.accumulator -= self.info.timestep();
-
-            self.schedule.run(world);
-            self.meta.run(world);
-            accumulated_frames += 1;
-        }
 
         // TODO: handle the edge case where we don't have a snapshot
         let current_tick = world
@@ -171,6 +163,14 @@ impl Stage for NetworkSimulationStage {
             }
 
             world.remove_resource::<Rewind>();
+        }
+
+        while self.info.accumulator >= self.info.timestep() {
+            self.info.accumulator -= self.info.timestep();
+
+            self.schedule.run(world);
+            self.meta.run(world);
+            accumulated_frames += 1;
         }
     }
 }

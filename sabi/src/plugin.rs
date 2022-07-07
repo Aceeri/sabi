@@ -73,6 +73,11 @@ where
                 .after("client_apply_server_update"),
         );
 
+        app.add_meta_network_system(
+            crate::protocol::resim::store_snapshot::<C>
+                .run_if_resource_exists::<RenetClient>()
+                .run_if(client_connected),
+        );
         app.add_rewind_network_system(crate::protocol::resim::rewind::<C>);
     }
 }
