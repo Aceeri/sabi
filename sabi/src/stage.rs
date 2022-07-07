@@ -99,6 +99,8 @@ pub struct NetworkSimulationStage {
     pub rewind: SystemStage,
     /// Apply updates received from the server if any.
     pub apply_updates: SystemStage,
+    /// Meta schedule, we want these to run on the timestep, but never replayed.
+    pub meta: SystemStage,
     /// Game simulation that will be rewound.
     pub schedule: Schedule,
 }
@@ -110,6 +112,7 @@ impl NetworkSimulationStage {
             info: NetworkSimulationInfo::new(timestep),
             rewind: SystemStage::parallel(),
             apply_updates: SystemStage::parallel(),
+            meta: SystemStage::parallel(),
             schedule: Schedule::default(),
         }
     }
@@ -127,9 +130,6 @@ impl Stage for NetworkSimulationStage {
             }
         }
 
-        //info!("static: {:?}", self.info.static_timestep());
-        //info!("accel: {:?}", self.info.timestep());
-
         self.info.accumulator += {
             let time = world.get_resource::<Time>();
             if let Some(time) = time {
@@ -141,6 +141,14 @@ impl Stage for NetworkSimulationStage {
 
         let mut catchup_frames = 0;
         let mut accumulated_frames = 0;
+
+        while self.info.accumulator >= self.info.timestep() {
+            self.info.accumulator -= self.info.timestep();
+
+            self.schedule.run(world);
+            self.meta.run(world);
+            accumulated_frames += 1;
+        }
 
         // TODO: handle the edge case where we don't have a snapshot
         let current_tick = world
@@ -163,18 +171,6 @@ impl Stage for NetworkSimulationStage {
             }
 
             world.remove_resource::<Rewind>();
-        }
-
-        //info!("{:?}", self.info);
-        while self.info.accumulator >= self.info.timestep() {
-            self.info.accumulator -= self.info.timestep();
-
-            self.schedule.run(world);
-            accumulated_frames += 1;
-        }
-
-        if accumulated_frames + catchup_frames > 0 {
-            //info!("{} - {}", accumulated_frames, catchup_frames);
         }
     }
 }
@@ -226,6 +222,11 @@ pub trait NetworkSimulationAppExt {
     ) -> &mut Self;
 
     fn add_apply_update_network_system<Params>(
+        &mut self,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self;
+
+    fn add_meta_network_system<Params>(
         &mut self,
         system: impl IntoSystemDescriptor<Params>,
     ) -> &mut Self;
@@ -321,6 +322,14 @@ impl NetworkSimulationAppExt for App {
         system: impl IntoSystemDescriptor<Params>,
     ) -> &mut Self {
         self.get_network_stage().apply_updates.add_system(system);
+        self
+    }
+
+    fn add_meta_network_system<Params>(
+        &mut self,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self {
+        self.get_network_stage().meta.add_system(system);
         self
     }
 }

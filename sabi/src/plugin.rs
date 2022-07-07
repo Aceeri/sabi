@@ -47,24 +47,21 @@ where
     fn build(&self, app: &mut App) {
         app.insert_resource(SnapshotBuffer::<C>::new());
 
-        app.add_system(
+        app.add_meta_network_system(
             crate::protocol::update::server_queue_interest::<C>
-                .run_if(crate::protocol::on_network_tick)
                 .run_if_resource_exists::<RenetServer>()
                 .before("send_interests")
                 .after("fetch_priority"),
         );
 
-        app.add_system(
+        app.add_meta_network_system(
             crate::protocol::priority::server_bump_filtered::<C, With<C>, 1>
-                .run_if(crate::protocol::on_network_tick)
                 .run_if_resource_exists::<RenetServer>()
                 .before("fetch_priority"),
         );
 
-        app.add_system(
+        app.add_meta_network_system(
             crate::protocol::priority::server_bump_filtered::<C, Changed<C>, 100>
-                .run_if(crate::protocol::on_network_tick)
                 .run_if_resource_exists::<RenetServer>()
                 .before("fetch_priority"),
         );
@@ -137,13 +134,11 @@ where
         app.insert_resource(NetworkSimulationInfo::new(self.tick_rate));
 
         app.insert_resource(Lobby::default());
-        app.insert_resource(NetworkGameTimer::new(self.tick_rate));
 
         app.add_plugin(ReplicatePhysicsPlugin);
         app.add_plugin(SabiServerPlugin::<I>::default());
         app.add_plugin(SabiClientPlugin::<I>::default());
 
-        app.add_system(tick_network_timer);
         app.add_network_system(increment_network_tick);
 
         app.add_plugin(ReplicatePlugin::<Transform>::default());
@@ -178,38 +173,32 @@ where
         app.add_plugin(bevy_renet::RenetServerPlugin);
         app.add_plugin(bevy_renet::RenetClientPlugin);
 
-        app.add_system(
+        app.add_meta_network_system(
             crate::protocol::input::server_recv_input::<I>
                 .run_if_resource_exists::<RenetServer>()
-                //.run_if(on_network_tick)
                 .label("recv_input"),
         );
 
-        app.add_system(
+        app.add_meta_network_system(
             crate::protocol::input::server_apply_input::<I>
                 .run_if_resource_exists::<RenetServer>()
-                .run_if(on_network_tick)
                 .label("apply_input")
                 .after("recv_input"),
         );
 
-        app.add_system(
+        app.add_meta_network_system(
             crate::protocol::priority::fetch_top_priority
                 .run_if_resource_exists::<RenetServer>()
-                .run_if(on_network_tick)
                 .label("fetch_priority"),
         );
-        app.add_system(
+        app.add_meta_network_system(
             server_send_interest
                 .run_if_resource_exists::<RenetServer>()
-                .run_if(on_network_tick)
                 .label("send_interests"),
         );
 
-        app.add_system(
-            crate::protocol::update::server_clear_queue
-                .run_if(on_network_tick)
-                .after("send_interests"),
+        app.add_meta_network_system(
+            crate::protocol::update::server_clear_queue.after("send_interests"),
         );
         app.add_system(log_on_error_system);
     }
@@ -232,7 +221,7 @@ where
         app.add_plugin(RenetClientPlugin);
         app.insert_resource(crate::protocol::update::UpdateMessages::new());
 
-        app.add_system(
+        app.add_meta_network_system(
             crate::protocol::update::client_recv_interest
                 .run_if_resource_exists::<RenetClient>()
                 .run_if(client_connected)
@@ -246,20 +235,18 @@ where
                 .label("client_apply_server_update"),
         );
 
-        app.add_system(
+        app.add_meta_network_system(
             crate::protocol::input::client_update_input_buffer::<I>
                 .run_if_resource_exists::<RenetClient>()
                 .run_if(client_connected)
-                .run_if(on_network_tick)
                 .label("client_update_input_buffer")
                 .before("client_send_input"),
         );
 
-        app.add_system(
+        app.add_meta_network_system(
             crate::protocol::input::client_send_input::<I>
                 .run_if_resource_exists::<RenetClient>()
                 .run_if(client_connected)
-                .run_if(on_network_tick)
                 .label("client_send_input")
                 .after("client_update_input_buffer"),
         );

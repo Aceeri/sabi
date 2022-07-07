@@ -6,6 +6,7 @@ extern crate sabi_derive;
 #[doc(hidden)]
 pub use sabi_derive::*;
 
+pub mod error;
 pub mod plugin;
 pub mod protocol;
 pub mod replicate;
@@ -22,6 +23,7 @@ pub mod prelude {
         channel, lobby::Lobby, tick_hz, Owned, ServerEntities, ServerEntity, ServerMessage,
     };
 
+    pub use crate::error::SabiError;
     pub use crate::plugin::{ReplicatePlugin, SabiPlugin};
     pub use crate::replicate::{Replicate, ReplicateId};
 }

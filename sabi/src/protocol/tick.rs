@@ -1,7 +1,7 @@
 use bevy::{prelude::*, reflect::FromReflect};
 use smallvec::SmallVec;
 
-use std::{time::Duration};
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
@@ -122,21 +122,8 @@ pub const fn tick_hz(rate: u64) -> Duration {
     Duration::from_nanos(1_000_000_000 / rate)
 }
 
-pub fn tick_network_timer(
-    time: Res<Time>,
-    mut network_timer: ResMut<NetworkGameTimer>,
-) {
-    network_timer.tick(time.delta());
-}
-
-pub fn increment_network_tick(
-    mut tick: ResMut<NetworkTick>,
-) {
+pub fn increment_network_tick(mut tick: ResMut<NetworkTick>) {
     tick.increment_tick();
-}
-
-pub fn on_network_tick(network_timer: Res<NetworkGameTimer>) -> bool {
-    network_timer.just_finished()
 }
 
 #[cfg(test)]

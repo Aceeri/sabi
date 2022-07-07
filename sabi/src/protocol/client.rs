@@ -1,28 +1,26 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{ConnectToken, RenetClient};
 
+use std::error::Error;
 use std::net::{ToSocketAddrs, UdpSocket};
 
 use std::time::SystemTime;
 
 use crate::protocol::*;
 
-pub fn new_renet_client<S: AsRef<str>>(ip: S, port: u16) -> RenetClient {
+pub fn new_renet_client<S: AsRef<str>>(ip: S, port: u16) -> Result<RenetClient, Box<dyn Error>> {
     let server_addr = format!("{}:{}", ip.as_ref(), port)
-        .to_socket_addrs()
-        .unwrap()
+        .to_socket_addrs()?
         .next()
-        .unwrap();
+        .ok_or(SabiError::NoSocketAddr)?;
 
     info!("server addr: {:?}", server_addr);
     let protocol_id = protocol_id();
     info!("protocol id: {:?}", protocol_id);
 
     let connection_config = renet_connection_config();
-    let socket = UdpSocket::bind((localhost_ip(), 0)).unwrap();
-    let current_time = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap();
+    let socket = UdpSocket::bind((localhost_ip(), 0))?;
+    let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let client_id = current_time.as_millis() as u64;
 
     // This connect token should come from another system, NOT generated from the client.
@@ -37,9 +35,15 @@ pub fn new_renet_client<S: AsRef<str>>(ip: S, port: u16) -> RenetClient {
         vec![server_addr],
         None,
         PRIVATE_KEY,
-    )
-    .unwrap();
-    RenetClient::new(current_time, socket, client_id, token, connection_config).unwrap()
+    )?;
+
+    Ok(RenetClient::new(
+        current_time,
+        socket,
+        client_id,
+        token,
+        connection_config,
+    )?)
 }
 
 pub fn client_connected(client: Option<ResMut<RenetClient>>) -> bool {
