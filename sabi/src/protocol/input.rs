@@ -88,7 +88,9 @@ impl<I> QueuedInputs<I> {
     }
 
     pub fn upsert(&mut self, tick: NetworkTick, input: I) {
-        self.queue.insert(tick, input);
+        if let None = self.queue.insert(tick, input) {
+            //info!("recv input for tick {}", tick.tick());
+        }
     }
 
     /// Clean any in the queue that are before the current tick.
@@ -144,6 +146,8 @@ pub fn server_apply_input<I>(
             if entities.contains(*entity) {
                 commands.entity(*entity).insert(input.clone());
             }
+        } else {
+            error!("no input for player {} on tick {}", client, tick.tick());
         }
     }
 }
@@ -153,13 +157,23 @@ pub fn client_send_input<I>(
     input_buffer: Res<QueuedInputs<I>>,
     mut client: ResMut<RenetClient>,
 ) where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+    I: 'static
+        + Send
+        + Sync
+        + Component
+        + Clone
+        + Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + std::fmt::Debug,
 {
     let message = ClientInputMessage {
         tick: tick.clone(),
         ack: NetworkAck::new(tick.clone()),
         inputs: input_buffer.clone(),
     };
+
+    //info!("sending {:?}", message);
 
     let input_message = bincode::serialize(&message).unwrap();
     let compressed_message = zstd::bulk::compress(&input_message.as_slice(), 0).unwrap();

@@ -123,8 +123,8 @@ pub struct Rewind(pub NetworkTick);
 
 impl Stage for NetworkSimulationStage {
     fn run(&mut self, world: &mut World) {
-        if world.is_resource_changed::<NetworkSimulationInfo>() {
-            if let Some(info) = world.get_resource::<NetworkSimulationInfo>() {
+        if let Some(info) = world.get_resource::<NetworkSimulationInfo>() {
+            if self.info.accel != info.accel || self.info.accel_step != info.accel_step {
                 self.info.accel = info.accel;
                 self.info.accel_step = info.accel_step;
             }
@@ -151,9 +151,9 @@ impl Stage for NetworkSimulationStage {
             let rewind_tick = rewind.0.clone();
 
             if rewind_tick.tick() < current_tick.tick() {
-                self.rewind.run(world);
-
                 world.insert_resource(rewind_tick);
+
+                self.rewind.run(world);
 
                 for tick in rewind_tick.tick()..current_tick.tick() {
                     self.apply_updates.run(world);
@@ -161,6 +161,12 @@ impl Stage for NetworkSimulationStage {
                     catchup_frames += 1;
                 }
             }
+
+            let resimmed_current_tick = world
+                .get_resource::<NetworkTick>()
+                .expect("expected network tick")
+                .clone();
+            assert_eq!(current_tick.tick(), resimmed_current_tick.tick());
 
             world.remove_resource::<Rewind>();
         }

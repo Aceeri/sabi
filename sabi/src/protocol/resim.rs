@@ -1,9 +1,7 @@
 use bevy::utils::HashMap;
 use bevy::{ecs::entity::Entities, prelude::*};
 
-use crate::stage::Rewind;
-
-use super::{NetworkTick, Replicate, ServerEntity};
+use super::{NetworkTick, Replicate};
 
 pub const SNAPSHOT_RETAIN_BUFFER: i64 = 32;
 

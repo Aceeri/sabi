@@ -3,7 +3,7 @@ use std::{marker::PhantomData, time::Duration};
 use bevy::prelude::*;
 use bevy_renet::{
     renet::{RenetClient, RenetError, RenetServer},
-    run_if_client_conected, RenetClientPlugin,
+    RenetClientPlugin,
 };
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
 use serde::{Deserialize, Serialize};
@@ -99,7 +99,15 @@ impl<I> Default for SabiPlugin<I> {
 
 impl<I> Plugin for SabiPlugin<I>
 where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+    I: 'static
+        + Send
+        + Sync
+        + Component
+        + Clone
+        + Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + std::fmt::Debug,
 {
     fn build(&self, app: &mut App) {
         app.register_type::<ServerEntity>();
@@ -220,7 +228,15 @@ impl<I> Default for SabiClientPlugin<I> {
 
 impl<I> Plugin for SabiClientPlugin<I>
 where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+    I: 'static
+        + Send
+        + Sync
+        + Component
+        + Clone
+        + Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + std::fmt::Debug,
 {
     fn build(&self, app: &mut App) {
         app.add_plugin(RenetClientPlugin);

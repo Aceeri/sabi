@@ -17,7 +17,7 @@ use super::{
     NetworkTick,
 };
 
-pub const FRAME_BUFFER: u64 = 2;
+pub const FRAME_BUFFER: u64 = 6;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateMessage {
@@ -29,7 +29,6 @@ impl UpdateMessage {
     pub fn apply(&mut self, other: Self) {
         if other.tick != self.tick {
             panic!("attempt to apply update message on different tick");
-            return;
         }
 
         self.entity_update.apply(other.entity_update);
@@ -165,9 +164,11 @@ pub fn client_recv_interest(
         }
 
         if diff > FRAME_BUFFER as i64 {
-            network_sim_info.decel(0.01);
+            network_sim_info.accel(0.01);
         } else if diff < FRAME_BUFFER as i64 {
-            network_sim_info.accel(0.02);
+            network_sim_info.decel(0.01);
+        } else if diff == FRAME_BUFFER as i64 {
+            network_sim_info.accel(0.0);
         }
 
         match rewind {
