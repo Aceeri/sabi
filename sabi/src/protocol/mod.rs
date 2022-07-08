@@ -137,26 +137,29 @@ pub fn protocol_id() -> u64 {
 }
 
 pub fn renet_connection_config() -> RenetConnectionConfig {
+    let channels = vec![
+        ChannelConfig::Reliable(ReliableChannelConfig {
+            channel_id: channel::SERVER_MESSAGE,
+            ..Default::default()
+        }),
+        ChannelConfig::Unreliable(UnreliableChannelConfig {
+            channel_id: channel::CLIENT_INPUT,
+            ..Default::default()
+        }),
+        ChannelConfig::Unreliable(UnreliableChannelConfig {
+            channel_id: channel::COMPONENT,
+            ..Default::default()
+        }),
+        ChannelConfig::Block(BlockChannelConfig {
+            channel_id: channel::BLOCK,
+            ..Default::default()
+        }),
+    ];
+
     RenetConnectionConfig {
         heartbeat_time: Duration::ZERO,
-        channels_config: vec![
-            ChannelConfig::Reliable(ReliableChannelConfig {
-                channel_id: channel::SERVER_MESSAGE,
-                ..Default::default()
-            }),
-            ChannelConfig::Unreliable(UnreliableChannelConfig {
-                channel_id: channel::CLIENT_INPUT,
-                ..Default::default()
-            }),
-            ChannelConfig::Unreliable(UnreliableChannelConfig {
-                channel_id: channel::COMPONENT,
-                ..Default::default()
-            }),
-            ChannelConfig::Block(BlockChannelConfig {
-                channel_id: channel::BLOCK,
-                ..Default::default()
-            }),
-        ],
+        send_channels_config: channels.clone(),
+        receive_channels_config: channels.clone(),
         ..Default::default()
     }
 }
@@ -164,19 +167,8 @@ pub fn renet_connection_config() -> RenetConnectionConfig {
 /// Fetch our external ip using Cloudflare's DNS resolver.
 ///
 /// We need this for verifying that connections from clients are valid
-pub fn public_ip() -> Option<String> {
-    let socket = match UdpSocket::bind((localhost_ip(), 0)) {
-        Ok(s) => s,
-        Err(_) => return None,
-    };
-
-    match socket.connect("1.1.1.1:80") {
-        Ok(()) => (),
-        Err(_) => return None,
-    };
-
-    match socket.local_addr() {
-        Ok(addr) => return Some(addr.ip().to_string()),
-        Err(_) => return None,
-    };
+pub fn public_ip() -> Result<String, std::io::Error> {
+    let socket = UdpSocket::bind((localhost_ip(), 0))?;
+    socket.connect("1.1.1.1:80")?;
+    Ok(socket.local_addr()?.ip().to_string())
 }
