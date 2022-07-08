@@ -162,6 +162,7 @@ impl Stage for NetworkSimulationStage {
                 }
             }
 
+            self.apply_updates.run(world);
             let resimmed_current_tick = world
                 .get_resource::<NetworkTick>()
                 .expect("expected network tick")

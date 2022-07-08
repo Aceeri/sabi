@@ -184,7 +184,6 @@ where
         app.insert_resource(crate::protocol::input::PerClientQueuedInputs::<I>::new());
 
         app.add_plugin(bevy_renet::RenetServerPlugin);
-        app.add_plugin(bevy_renet::RenetClientPlugin);
 
         app.add_meta_network_system(
             crate::protocol::input::server_recv_input::<I>
@@ -270,6 +269,12 @@ where
                 .run_if(client_connected)
                 .label("client_send_input")
                 .after("client_update_input_buffer"),
+        );
+
+        app.add_apply_update_network_system(
+            crate::protocol::input::client_apply_input_buffer::<I>
+                .run_if(client_connected)
+                .label("client_apply_input_buffer"),
         );
     }
 }
