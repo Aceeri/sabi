@@ -145,7 +145,10 @@ impl Stage for NetworkSimulationStage {
         while self.info.accumulator >= self.info.timestep() {
             self.info.accumulator -= self.info.timestep();
 
+            world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
             self.schedule.run(world);
+            world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
+
             self.meta.run(world);
             accumulated_frames += 1;
         }
@@ -165,12 +168,16 @@ impl Stage for NetworkSimulationStage {
                 self.apply_updates.run(world);
 
                 for tick in rewind_tick.tick()..current_tick.tick() {
+                    world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
                     self.schedule.run(world);
+                    world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
+
                     self.apply_updates.run(world);
                     catchup_frames += 1;
                 }
             }
 
+            self.apply_updates.run(world);
             let resimmed_current_tick = world
                 .get_resource::<NetworkTick>()
                 .expect("expected network tick")

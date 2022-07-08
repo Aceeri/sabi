@@ -77,9 +77,11 @@ pub fn rewind<C>(
             }
         }
     } else {
-        error!(
-            "no snapshot for component: {:?}",
-            std::any::type_name::<C>()
-        );
+        /*
+               error!(
+                   "no snapshot for component: {:?}",
+                   std::any::type_name::<C>()
+               );
+        */
     }
 }

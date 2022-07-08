@@ -152,7 +152,7 @@ where
         app.add_plugin(SabiServerPlugin::<I>::default());
         app.add_plugin(SabiClientPlugin::<I>::default());
 
-        app.add_network_system(increment_network_tick);
+        app.add_system_to_network_stage(NetworkCoreStage::Last, increment_network_tick);
 
         app.add_apply_update_network_system(bevy::transform::transform_propagate_system);
 
