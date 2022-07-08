@@ -142,6 +142,14 @@ impl Stage for NetworkSimulationStage {
             }
         };
 
+        while self.info.accumulator >= self.info.timestep() {
+            self.info.accumulator -= self.info.timestep();
+
+            self.schedule.run(world);
+            self.meta.run(world);
+            accumulated_frames += 1;
+        }
+
         // TODO: handle the edge case where we don't have a snapshot
         let current_tick = world
             .get_resource::<NetworkTick>()
@@ -170,14 +178,6 @@ impl Stage for NetworkSimulationStage {
             assert_eq!(current_tick.tick(), resimmed_current_tick.tick());
 
             world.remove_resource::<Rewind>();
-        }
-
-        while self.info.accumulator >= self.info.timestep() {
-            self.info.accumulator -= self.info.timestep();
-
-            self.schedule.run(world);
-            self.meta.run(world);
-            accumulated_frames += 1;
         }
     }
 }
