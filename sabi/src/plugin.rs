@@ -154,7 +154,7 @@ where
 
         app.add_network_system(increment_network_tick);
 
-        app.add_apply_update_network_system(bevy::transform::transform_propagate_system);
+        //app.add_apply_update_network_system(bevy::transform::transform_propagate_system);
 
         app.add_plugin(ReplicatePlugin::<Transform>::default());
         app.add_plugin(ReplicatePlugin::<GlobalTransform>::default());
@@ -257,7 +257,7 @@ where
                 .label("client_apply_server_update"),
         );
 
-        app.add_meta_network_system(
+        app.add_network_system(
             crate::protocol::input::client_update_input_buffer::<I>
                 .run_if_resource_exists::<RenetClient>()
                 .run_if(client_connected)
