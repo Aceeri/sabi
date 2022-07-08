@@ -53,6 +53,12 @@ pub fn new_renet_server<S: AsRef<str>>(
         };
     }
 
+    if let None = public_ip {
+        if let Ok(ip) = my_internet_ip::get() {
+            public_ip = Some(ip.to_string());
+        }
+    }
+
     let server_addr = format!("{}:{}", public_ip.ok_or("expected a public ip")?, port)
         .to_socket_addrs()?
         .next()
