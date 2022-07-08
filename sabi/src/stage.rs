@@ -162,15 +162,15 @@ impl Stage for NetworkSimulationStage {
                 world.insert_resource(rewind_tick);
 
                 self.rewind.run(world);
+                self.apply_updates.run(world);
 
                 for tick in rewind_tick.tick()..current_tick.tick() {
-                    self.apply_updates.run(world);
                     self.schedule.run(world);
+                    self.apply_updates.run(world);
                     catchup_frames += 1;
                 }
             }
 
-            self.apply_updates.run(world);
             let resimmed_current_tick = world
                 .get_resource::<NetworkTick>()
                 .expect("expected network tick")
