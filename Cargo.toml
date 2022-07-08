@@ -7,7 +7,7 @@ bevy_rapier3d = {version = "0.14", path = "../bevy_rapier/bevy_rapier3d"}
 #iyes_loopless = {path = "../iyes_loopless"}
 
 [patch."https://github.com/lucaspoffo/renet"]
-renet = {path = "../renet/renet"}
+#renet = {path = "../renet/renet"}
 
 [patch."https://github.com/iyesgames/iyes_loopless"]
 #iyes_loopless = {path = "../iyes_loopless"}
