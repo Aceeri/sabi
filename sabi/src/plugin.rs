@@ -45,40 +45,43 @@ where
     C: 'static + Send + Sync + Component + Replicate + Clone,
 {
     fn build(&self, app: &mut App) {
-        app.insert_resource(SnapshotBuffer::<C>::new());
+        if app.world.contains_resource::<crate::Server>() {
+            app.add_meta_network_system(
+                crate::protocol::update::server_queue_interest::<C>
+                    //.run_if_resource_exists::<RenetServer>()
+                    .before("send_interests")
+                    .after("fetch_priority"),
+            );
 
-        app.add_meta_network_system(
-            crate::protocol::update::server_queue_interest::<C>
-                .run_if_resource_exists::<RenetServer>()
-                .before("send_interests")
-                .after("fetch_priority"),
-        );
+            app.add_meta_network_system(
+                crate::protocol::priority::server_bump_filtered::<C, With<C>, 1>
+                    //.run_if_resource_exists::<RenetServer>()
+                    .before("fetch_priority"),
+            );
 
-        app.add_meta_network_system(
-            crate::protocol::priority::server_bump_filtered::<C, With<C>, 1>
-                .run_if_resource_exists::<RenetServer>()
-                .before("fetch_priority"),
-        );
+            app.add_meta_network_system(
+                crate::protocol::priority::server_bump_filtered::<C, Changed<C>, 100>
+                    //.run_if_resource_exists::<RenetServer>()
+                    .before("fetch_priority"),
+            );
+        }
 
-        app.add_meta_network_system(
-            crate::protocol::priority::server_bump_filtered::<C, Changed<C>, 100>
-                .run_if_resource_exists::<RenetServer>()
-                .before("fetch_priority"),
-        );
+        if app.world.contains_resource::<crate::Client>() {
+            app.insert_resource(SnapshotBuffer::<C>::new());
+            app.add_apply_update_network_system(
+                crate::protocol::update::client_update::<C>
+                    .run_if_resource_exists::<RenetClient>()
+                    .run_if(client_connected)
+                    .after("client_apply_server_update"),
+            );
 
-        app.add_apply_update_network_system(
-            crate::protocol::update::client_update::<C>
-                .run_if_resource_exists::<RenetClient>()
-                .run_if(client_connected)
-                .after("client_apply_server_update"),
-        );
-
-        app.add_meta_network_system(
-            crate::protocol::resim::store_snapshot::<C>
-                .run_if_resource_exists::<RenetClient>()
-                .run_if(client_connected),
-        );
-        app.add_rewind_network_system(crate::protocol::resim::rewind::<C>);
+            app.add_meta_network_system(
+                crate::protocol::resim::store_snapshot::<C>
+                    .run_if_resource_exists::<RenetClient>()
+                    .run_if(client_connected),
+            );
+            app.add_rewind_network_system(crate::protocol::resim::rewind::<C>);
+        }
     }
 }
 
@@ -149,12 +152,17 @@ where
         app.insert_resource(Lobby::default());
 
         app.add_plugin(ReplicatePhysicsPlugin);
-        app.add_plugin(SabiServerPlugin::<I>::default());
-        app.add_plugin(SabiClientPlugin::<I>::default());
+        if app.world.contains_resource::<crate::Server>() {
+            app.add_plugin(SabiServerPlugin::<I>::default());
+        }
+
+        if app.world.contains_resource::<crate::Client>() {
+            app.add_plugin(SabiClientPlugin::<I>::default());
+        }
 
         app.add_system_to_network_stage(NetworkCoreStage::Last, increment_network_tick);
 
-        app.add_apply_update_network_system(bevy::transform::transform_propagate_system);
+        //app.add_apply_update_network_system(bevy::transform::transform_propagate_system);
 
         app.add_plugin(ReplicatePlugin::<Transform>::default());
         app.add_plugin(ReplicatePlugin::<GlobalTransform>::default());
@@ -214,7 +222,6 @@ where
         app.add_meta_network_system(
             crate::protocol::update::server_clear_queue.after("send_interests"),
         );
-        app.add_system(log_on_error_system);
     }
 }
 
