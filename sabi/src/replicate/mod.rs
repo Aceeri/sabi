@@ -1,7 +1,5 @@
-use std::borrow::Cow;
-use std::collections::hash_map::{DefaultHasher, Entry};
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::sync::{Arc, RwLock};
 
 use bevy::prelude::*;
@@ -9,7 +7,6 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 
-pub mod collider;
 pub mod general;
 pub mod physics;
 
@@ -95,9 +92,9 @@ pub struct ReplicateId(pub u16);
 
 pub trait Replicate
 where
-    Self: Sized,
+    Self: 'static + Sized + Send + Sync,
 {
-    type Def: Serialize + for<'de> Deserialize<'de>;
+    type Def: Serialize + for<'de> Deserialize<'de> + PartialEq;
     fn into_def(self) -> Self::Def;
     fn from_def(def: Self::Def) -> Self;
     fn apply_def(&mut self, def: Self::Def) {

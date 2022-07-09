@@ -29,13 +29,14 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream, Vec<syn::Error>> {
         from_def = quote! { def.0 };
 
         Some(quote! {
-            #[derive(Debug, Clone, Serialize, Deserialize)]
+            #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
             pub struct #replicate_ident(#[serde(with = #remote_ident_str)] pub #remote_path);
         })
     } else {
         None
     };
 
+    let where_clause = input.generics.where_clause.clone();
     let generics = input.generics;
 
     let (sabi_path, sabi_crate) = match attr.sabi_path {
@@ -57,7 +58,7 @@ pub fn derive(input: DeriveInput) -> Result<TokenStream, Vec<syn::Error>> {
         const _: () = {
             #sabi_crate
 
-            impl #generics #sabi_path::Replicate for #base_ident #generics {
+            impl #generics #sabi_path::Replicate for #base_ident #generics #where_clause {
                 type Def = #def;
                 fn into_def(self) -> Self::Def {
                     #into_def
