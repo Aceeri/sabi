@@ -1,6 +1,7 @@
 use std::fmt;
 
 use bevy::{
+    ecs::entity::Entities,
     prelude::*,
     utils::{Entry, HashMap},
 };
@@ -205,7 +206,8 @@ pub fn client_apply_server_update(
 
 pub fn client_update<C>(
     mut commands: Commands,
-    mut server_entities: ResMut<ServerEntities>,
+    entities: &Entities,
+    server_entities: Res<ServerEntities>,
     mut update_events: EventReader<(ServerEntity, ComponentsUpdate)>,
     mut query: Query<&mut C>,
 ) where
@@ -214,16 +216,18 @@ pub fn client_update<C>(
     for (server_entity, components_update) in update_events.iter() {
         if let Some(update_data) = components_update.get(&C::replicate_id()) {
             let def: <C as Replicate>::Def = bincode::deserialize(&update_data).unwrap();
-            let entity = server_entities.spawn_or_get(&mut commands, *server_entity);
-
-            if let Ok(mut component) = query.get_mut(entity) {
-                let current_def = component.clone().into_def();
-                if current_def != def {
-                    component.apply_def(def);
+            if let Some(entity) = server_entities.get(entities, *server_entity) {
+                if let Ok(mut component) = query.get_mut(entity) {
+                    let current_def = component.clone().into_def();
+                    if current_def != def {
+                        component.apply_def(def);
+                    }
+                } else {
+                    let component = C::from_def(def);
+                    commands.entity(entity).insert(component);
                 }
             } else {
-                let component = C::from_def(def);
-                commands.entity(entity).insert(component);
+                error!("server entity was not spawned before sending component event");
             }
         }
     }

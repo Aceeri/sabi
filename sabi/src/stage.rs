@@ -164,20 +164,22 @@ impl Stage for NetworkSimulationStage {
             if rewind_tick.tick() < current_tick.tick() {
                 world.insert_resource(rewind_tick);
 
+                world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
                 self.rewind.run(world);
                 self.apply_updates.run(world);
+                world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
 
                 for tick in rewind_tick.tick()..current_tick.tick() {
                     world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
                     self.schedule.run(world);
+                    self.apply_updates.run(world);
                     world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
 
-                    self.apply_updates.run(world);
                     catchup_frames += 1;
                 }
             }
 
-            self.apply_updates.run(world);
+            //self.apply_updates.run(world);
             let resimmed_current_tick = world
                 .get_resource::<NetworkTick>()
                 .expect("expected network tick")

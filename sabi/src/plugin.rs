@@ -69,10 +69,7 @@ where
         if app.world.contains_resource::<crate::Client>() {
             app.insert_resource(SnapshotBuffer::<C>::new());
             app.add_apply_update_network_system(
-                crate::protocol::update::client_update::<C>
-                    .run_if_resource_exists::<RenetClient>()
-                    .run_if(client_connected)
-                    .after("client_apply_server_update"),
+                crate::protocol::update::client_update::<C>.after("client_apply_server_update"),
             );
 
             app.add_meta_network_system(
