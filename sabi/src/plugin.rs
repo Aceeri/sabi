@@ -256,8 +256,8 @@ where
 
         app.add_apply_update_network_system(
             crate::protocol::update::client_apply_server_update
-                .run_if_resource_exists::<RenetClient>()
-                .run_if(client_connected)
+                //.run_if_resource_exists::<RenetClient>()
+                //.run_if(client_connected)
                 .label("client_apply_server_update"),
         );
 
@@ -274,12 +274,13 @@ where
                 .run_if_resource_exists::<RenetClient>()
                 .run_if(client_connected)
                 .label("client_send_input")
+                .before("client_recv_interest")
                 .after("client_update_input_buffer"),
         );
 
         app.add_apply_update_network_system(
             crate::protocol::input::client_apply_input_buffer::<I>
-                .run_if(client_connected)
+                //.run_if(client_connected)
                 .label("client_apply_input_buffer"),
         );
     }
