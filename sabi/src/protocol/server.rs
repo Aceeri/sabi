@@ -25,7 +25,7 @@ pub fn new_renet_server<S: AsRef<str>>(
     // Set up ports using UPnP so people don't have to port forward.
     if let None = public_ip {
         match igd::search_gateway(igd::SearchOptions {
-            timeout: Some(Duration::from_secs(1)),
+            timeout: Some(Duration::from_secs(5)),
             ..Default::default()
         }) {
             Err(ref err) => println!("Error: {}", err),

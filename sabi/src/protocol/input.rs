@@ -15,8 +15,7 @@ use crate::prelude::*;
 
 use super::{tick::NetworkAck, ClientId, NetworkTick};
 
-pub const TARGET_PING: i64 = 60;
-pub const INPUT_RETAIN_BUFFER: i64 = 32;
+pub const INPUT_RETAIN_BUFFER: i64 = 16;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientInputMessage<I> {
