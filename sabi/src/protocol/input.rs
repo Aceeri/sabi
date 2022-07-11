@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
-use super::{tick::NetworkAck, ClientId, NetworkTick};
+use super::{ack::NetworkAck, ClientId, NetworkTick};
 
 pub const INPUT_RETAIN_BUFFER: i64 = 16;
 
