@@ -154,7 +154,19 @@ pub fn client_recv_interest(
     let mut rewind: Option<NetworkTick> = None;
 
     while let Some(message) = client.receive_message(channel::COMPONENT) {
-        let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
+        let dict = crate::message_sample::DICTIONARIES
+            .get("update")
+            .expect("no update dictionary");
+        let mut decompressor =
+            zstd::bulk::Decompressor::with_dictionary(dict).expect("couldn't make decompressor");
+        /*
+        let mut decompressor = zstd::bulk::Decompressor::new().expect("couldn't make decompressor");
+        */
+
+        let decompressed = decompressor
+            .decompress(&message.as_slice(), 10 * 1024)
+            .expect("could not decompress message");
+
         let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
 
         let diff = tick.tick() as i64 - message.tick.tick() as i64;
@@ -275,8 +287,20 @@ pub fn server_send_interest(
         entity_update: updates.clone(),
     };
     let serialized = bincode::serialize(&message).unwrap();
+    /*
     crate::message_sample::try_add_sample("update", &serialized);
-    let compressed = zstd::bulk::compress(&serialized.as_slice(), 0).unwrap();
+    */
+    let dict = crate::message_sample::DICTIONARIES
+        .get("update")
+        .expect("no update dictionary");
+    let mut compressor =
+        zstd::bulk::Compressor::with_dictionary(0, dict).expect("couldn't make compressor");
+    /*
+    let mut compressor = zstd::bulk::Compressor::new(0).expect("couldn't make compressor");
+        */
+    let compressed = compressor
+        .compress(&serialized.as_slice())
+        .expect("couldn't compress message");
 
     server.broadcast_message(channel::COMPONENT, compressed);
 }

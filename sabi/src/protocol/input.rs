@@ -177,7 +177,7 @@ pub fn client_send_input<I>(
     };
 
     let serialized = bincode::serialize(&message).unwrap();
-    crate::message_sample::try_add_sample("input", &serialized);
+    //crate::message_sample::try_add_sample("input", &serialized);
     let compressed = zstd::bulk::compress(&serialized.as_slice(), 0).unwrap();
 
     client.send_message(channel::CLIENT_INPUT, compressed);

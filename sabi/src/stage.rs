@@ -153,13 +153,15 @@ impl Stage for NetworkSimulationStage {
                 .expect("expected network tick")
                 .increment_tick();
 
-            info!(
-                "running tick: {}",
-                world
-                    .get_resource::<NetworkTick>()
-                    .expect("expected network tick")
-                    .tick()
-            );
+            /*
+                       info!(
+                           "running tick: {}",
+                           world
+                               .get_resource::<NetworkTick>()
+                               .expect("expected network tick")
+                               .tick()
+                       );
+            */
             world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
             self.schedule.run(world);
             world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
@@ -178,7 +180,7 @@ impl Stage for NetworkSimulationStage {
 
             if rewind_tick.tick() < current_tick.tick() {
                 world.insert_resource(rewind_tick);
-                info!("rewinding to tick: {}", rewind_tick.tick());
+                //info!("rewinding to tick: {}", rewind_tick.tick());
 
                 world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
                 self.rewind.run(world);
