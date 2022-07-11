@@ -46,7 +46,7 @@ pub fn new_renet_client<S: AsRef<str>>(ip: S, port: u16) -> Result<RenetClient, 
     )?)
 }
 
-pub fn client_connected(client: Option<ResMut<RenetClient>>) -> bool {
+pub fn client_connected(client: Option<Res<RenetClient>>) -> bool {
     match client {
         Some(client) => client.is_connected(),
         None => false,

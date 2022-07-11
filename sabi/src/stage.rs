@@ -98,7 +98,9 @@ pub struct NetworkSimulationStage {
     /// Rewind the simulation back to the saved snapshot.
     pub rewind: SystemStage,
     /// Apply updates received from the server if any.
-    pub apply_updates: SystemStage,
+    pub update_history: SystemStage,
+    /// Apply historical input if any.
+    pub input_history: SystemStage,
     /// Meta schedule, we want these to run on the timestep, but never replayed.
     pub meta: SystemStage,
     /// Game simulation that will be rewound.
@@ -111,7 +113,8 @@ impl NetworkSimulationStage {
         Self {
             info: NetworkSimulationInfo::new(timestep),
             rewind: SystemStage::parallel(),
-            apply_updates: SystemStage::parallel(),
+            update_history: SystemStage::parallel(),
+            input_history: SystemStage::parallel(),
             meta: SystemStage::parallel(),
             schedule: Schedule::default(),
         }
@@ -145,11 +148,23 @@ impl Stage for NetworkSimulationStage {
         while self.info.accumulator >= self.info.timestep() {
             self.info.accumulator -= self.info.timestep();
 
+            world
+                .get_resource_mut::<NetworkTick>()
+                .expect("expected network tick")
+                .increment_tick();
+
+            info!(
+                "running tick: {}",
+                world
+                    .get_resource::<NetworkTick>()
+                    .expect("expected network tick")
+                    .tick()
+            );
             world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
             self.schedule.run(world);
             world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
-
             self.meta.run(world);
+
             accumulated_frames += 1;
         }
 
@@ -163,23 +178,57 @@ impl Stage for NetworkSimulationStage {
 
             if rewind_tick.tick() < current_tick.tick() {
                 world.insert_resource(rewind_tick);
+                info!("rewinding to tick: {}", rewind_tick.tick());
 
                 world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
                 self.rewind.run(world);
-                self.apply_updates.run(world);
+                self.input_history.run(world);
+                self.update_history.run(world);
                 world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
 
+                // The updates/rewinds are at the end of the frame, so we shouldn't
+                // replay the immediate frame we rewound to.
+                /*
+                               world
+                                   .get_resource_mut::<NetworkTick>()
+                                   .expect("expected network tick")
+                                   .increment_tick();
+                info!(
+                    "advancing 1 tick ahead to tick: {}",
+                    world
+                        .get_resource::<NetworkTick>()
+                        .expect("expected network tick")
+                        .tick()
+                );
+                */
+
                 for tick in rewind_tick.tick()..current_tick.tick() {
+                    world
+                        .get_resource_mut::<NetworkTick>()
+                        .expect("expected network tick")
+                        .increment_tick();
+
+                    /*
+                                       info!(
+                                           "replaying tick {}, world tick: {}",
+                                           tick,
+                                           world
+                                               .get_resource::<NetworkTick>()
+                                               .expect("expected network tick")
+                                               .tick()
+                                       );
+                    */
+
                     world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
                     self.schedule.run(world);
-                    self.apply_updates.run(world);
+                    self.input_history.run(world);
+                    self.update_history.run(world);
                     world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
 
                     catchup_frames += 1;
                 }
             }
 
-            //self.apply_updates.run(world);
             let resimmed_current_tick = world
                 .get_resource::<NetworkTick>()
                 .expect("expected network tick")
@@ -237,7 +286,12 @@ pub trait NetworkSimulationAppExt {
         system: impl IntoSystemDescriptor<Params>,
     ) -> &mut Self;
 
-    fn add_apply_update_network_system<Params>(
+    fn add_update_history_network_system<Params>(
+        &mut self,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self;
+
+    fn add_input_history_network_system<Params>(
         &mut self,
         system: impl IntoSystemDescriptor<Params>,
     ) -> &mut Self;
@@ -333,11 +387,19 @@ impl NetworkSimulationAppExt for App {
         self
     }
 
-    fn add_apply_update_network_system<Params>(
+    fn add_update_history_network_system<Params>(
         &mut self,
         system: impl IntoSystemDescriptor<Params>,
     ) -> &mut Self {
-        self.get_network_stage().apply_updates.add_system(system);
+        self.get_network_stage().update_history.add_system(system);
+        self
+    }
+
+    fn add_input_history_network_system<Params>(
+        &mut self,
+        system: impl IntoSystemDescriptor<Params>,
+    ) -> &mut Self {
+        self.get_network_stage().input_history.add_system(system);
         self
     }
 

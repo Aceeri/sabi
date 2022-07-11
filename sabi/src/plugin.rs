@@ -68,7 +68,7 @@ where
 
         if app.world.contains_resource::<crate::Client>() {
             app.insert_resource(SnapshotBuffer::<C>::new());
-            app.add_apply_update_network_system(
+            app.add_update_history_network_system(
                 crate::protocol::update::client_update::<C>.after("client_apply_server_update"),
             );
 
@@ -157,7 +157,7 @@ where
             app.add_plugin(SabiClientPlugin::<I>::default());
         }
 
-        app.add_system_to_network_stage(NetworkCoreStage::Last, increment_network_tick);
+        //app.add_system_to_network_stage(NetworkCoreStage::Last, increment_network_tick);
 
         //app.add_apply_update_network_system(bevy::transform::transform_propagate_system);
 
@@ -254,19 +254,13 @@ where
                 .label("client_recv_interest"),
         );
 
-        app.add_apply_update_network_system(
-            crate::protocol::update::client_apply_server_update
-                //.run_if_resource_exists::<RenetClient>()
-                //.run_if(client_connected)
-                .label("client_apply_server_update"),
+        app.add_update_history_network_system(
+            crate::protocol::update::client_apply_server_update.label("client_apply_server_update"),
         );
 
-        app.add_network_system(
+        app.add_meta_network_system(
             crate::protocol::input::client_update_input_buffer::<I>
-                .run_if_resource_exists::<RenetClient>()
-                .run_if(client_connected)
-                .label("client_update_input_buffer")
-                .before("client_send_input"),
+                .label("client_update_input_buffer"),
         );
 
         app.add_meta_network_system(
@@ -278,7 +272,7 @@ where
                 .after("client_update_input_buffer"),
         );
 
-        app.add_apply_update_network_system(
+        app.add_input_history_network_system(
             crate::protocol::input::client_apply_input_buffer::<I>
                 //.run_if(client_connected)
                 .label("client_apply_input_buffer"),

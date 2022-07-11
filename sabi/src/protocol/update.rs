@@ -1,10 +1,9 @@
-use std::fmt;
-
-use bevy::{
-    ecs::entity::Entities,
-    prelude::*,
-    utils::{Entry, HashMap},
+use std::{
+    collections::{btree_map::Entry, BTreeMap},
+    fmt,
 };
+
+use bevy::{ecs::entity::Entities, prelude::*, utils::HashMap};
 use bevy_renet::renet::{RenetClient, RenetServer};
 
 use crate::{
@@ -38,12 +37,12 @@ impl UpdateMessage {
 
 #[derive(Deref, DerefMut, Clone, Serialize, Deserialize)]
 pub struct EntityUpdate {
-    pub updates: HashMap<ServerEntity, ComponentsUpdate>,
+    pub updates: BTreeMap<ServerEntity, ComponentsUpdate>,
 }
 
 impl fmt::Debug for EntityUpdate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut counts: HashMap<ReplicateId, u16> = HashMap::new();
+        let mut counts: BTreeMap<ReplicateId, u16> = Default::default();
 
         for (_, component_update) in self.iter() {
             for (replicate_id, _) in component_update.iter() {
@@ -61,7 +60,7 @@ impl fmt::Debug for EntityUpdate {
 impl EntityUpdate {
     pub fn new() -> Self {
         Self {
-            updates: HashMap::new(),
+            updates: Default::default(),
         }
     }
 
@@ -84,11 +83,11 @@ impl EntityUpdate {
 }
 
 #[derive(Default, Deref, DerefMut, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ComponentsUpdate(pub HashMap<ReplicateId, Vec<u8>>);
+pub struct ComponentsUpdate(pub BTreeMap<ReplicateId, Vec<u8>>);
 
 impl ComponentsUpdate {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self(Default::default())
     }
 
     pub fn apply(&mut self, other: Self) {
@@ -104,13 +103,13 @@ impl EntityUpdate {
 
 #[derive(Debug, Clone)]
 pub struct UpdateMessages {
-    messages: HashMap<NetworkTick, UpdateMessage>,
+    messages: BTreeMap<NetworkTick, UpdateMessage>,
 }
 
 impl UpdateMessages {
     pub fn new() -> Self {
         Self {
-            messages: HashMap::new(),
+            messages: Default::default(),
         }
     }
 
@@ -275,8 +274,9 @@ pub fn server_send_interest(
         tick: *tick,
         entity_update: updates.clone(),
     };
-    let data = bincode::serialize(&message).unwrap();
-    let data = zstd::bulk::compress(&data.as_slice(), 0).unwrap();
+    let serialized = bincode::serialize(&message).unwrap();
+    crate::message_sample::try_add_sample("update", &serialized);
+    let compressed = zstd::bulk::compress(&serialized.as_slice(), 0).unwrap();
 
-    server.broadcast_message(channel::COMPONENT, data);
+    server.broadcast_message(channel::COMPONENT, compressed);
 }

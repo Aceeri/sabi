@@ -1,3 +1,6 @@
+use std::collections::BTreeMap;
+use std::fmt::Debug;
+
 use bevy::{
     prelude::*,
     utils::{Entry, HashMap},
@@ -13,7 +16,7 @@ use crate::prelude::*;
 use super::{tick::NetworkAck, ClientId, NetworkTick};
 
 pub const TARGET_PING: i64 = 60;
-pub const INPUT_RETAIN_BUFFER: i64 = 6;
+pub const INPUT_RETAIN_BUFFER: i64 = 32;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientInputMessage<I> {
@@ -58,13 +61,13 @@ impl<I> PerClientQueuedInputs<I> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueuedInputs<I> {
-    queue: HashMap<NetworkTick, I>,
+    queue: BTreeMap<NetworkTick, I>,
 }
 
 impl<I> QueuedInputs<I> {
     pub fn new() -> Self {
         Self {
-            queue: HashMap::new(),
+            queue: Default::default(),
         }
     }
 
@@ -147,7 +150,7 @@ pub fn server_apply_input<I>(
                 commands.entity(*entity).insert(input.clone());
             }
         } else {
-            //error!("no input for player {} on tick {}", client, tick.tick());
+            error!("no input for player {} on tick {}", client, tick.tick());
         }
     }
 }
@@ -173,12 +176,11 @@ pub fn client_send_input<I>(
         inputs: input_buffer.clone(),
     };
 
-    //info!("sending {:?}", message);
+    let serialized = bincode::serialize(&message).unwrap();
+    crate::message_sample::try_add_sample("input", &serialized);
+    let compressed = zstd::bulk::compress(&serialized.as_slice(), 0).unwrap();
 
-    let input_message = bincode::serialize(&message).unwrap();
-    let compressed_message = zstd::bulk::compress(&input_message.as_slice(), 0).unwrap();
-
-    client.send_message(channel::CLIENT_INPUT, compressed_message);
+    client.send_message(channel::CLIENT_INPUT, compressed);
 }
 
 pub fn client_update_input_buffer<I>(
@@ -186,7 +188,15 @@ pub fn client_update_input_buffer<I>(
     player_input: Res<I>,
     mut input_buffer: ResMut<QueuedInputs<I>>,
 ) where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+    I: 'static
+        + Send
+        + Sync
+        + Component
+        + Clone
+        + Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + Debug,
 {
     input_buffer.push(*tick, player_input.clone());
 }
@@ -196,9 +206,20 @@ pub fn client_apply_input_buffer<I>(
     mut player_input: ResMut<I>,
     input_buffer: Res<QueuedInputs<I>>,
 ) where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+    I: 'static
+        + Send
+        + Sync
+        + Component
+        + Clone
+        + Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + Debug,
 {
     if let Some(input) = input_buffer.get(&*tick) {
+        //info!("input: {:?}", input);
         *player_input = input.clone();
+    } else {
+        error!("no input for tick {}", tick.tick());
     }
 }

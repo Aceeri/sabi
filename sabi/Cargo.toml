@@ -26,7 +26,7 @@ smolset = "1.3"
 toml = "0.5"
 vec-collections = "0.4"
 wgpu-types = "0.13"
-zstd = "0.11"
+zstd = {version = "0.11", features = ["zdict_builder"]}
 
 [dependencies.bevy]
 default-features = false

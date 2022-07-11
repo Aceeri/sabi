@@ -10,6 +10,7 @@ pub mod error;
 pub mod plugin;
 pub mod protocol;
 pub mod replicate;
+pub mod message_sample;
 pub mod stage;
 
 #[derive(Debug, Clone, Copy)]

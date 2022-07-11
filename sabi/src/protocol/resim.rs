@@ -1,4 +1,5 @@
-use bevy::utils::HashMap;
+use std::collections::BTreeMap;
+
 use bevy::{ecs::entity::Entities, prelude::*};
 
 use super::{NetworkTick, Replicate};
@@ -6,17 +7,17 @@ use super::{NetworkTick, Replicate};
 pub const SNAPSHOT_RETAIN_BUFFER: i64 = 32;
 
 #[derive(Deref, DerefMut, Debug)]
-pub struct ComponentSnapshot<C>(HashMap<Entity, C>);
+pub struct ComponentSnapshot<C>(BTreeMap<Entity, C>);
 
 impl<C> Default for ComponentSnapshot<C> {
     fn default() -> Self {
-        Self(HashMap::new())
+        Self(Default::default())
     }
 }
 
 #[derive(Debug)]
 pub struct SnapshotBuffer<C> {
-    snapshots: HashMap<NetworkTick, ComponentSnapshot<C>>,
+    snapshots: BTreeMap<NetworkTick, ComponentSnapshot<C>>,
 }
 
 impl<C> Default for SnapshotBuffer<C> {
@@ -28,7 +29,7 @@ impl<C> Default for SnapshotBuffer<C> {
 impl<C> SnapshotBuffer<C> {
     pub fn new() -> Self {
         Self {
-            snapshots: HashMap::new(),
+            snapshots: Default::default(),
         }
     }
 
