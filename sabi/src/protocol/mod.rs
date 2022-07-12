@@ -22,6 +22,7 @@ use crate::prelude::*;
 pub mod ack;
 pub mod client;
 pub mod input;
+pub mod interest;
 pub mod lobby;
 pub mod priority;
 pub mod resim;

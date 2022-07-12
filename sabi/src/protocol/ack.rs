@@ -1,9 +1,21 @@
 use bevy::{prelude::*, reflect::FromReflect};
 use smallvec::SmallVec;
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::NetworkTick;
+use super::{ClientId, NetworkTick};
+
+#[derive(Default, Clone)]
+pub struct ClientAcks {
+    acks: BTreeMap<ClientId, NetworkAck>,
+}
+
+impl ClientAcks {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
 /// Bitset of previous ticks that were successfully retrieved.
 #[derive(Debug, Clone, Serialize, Deserialize, Reflect, FromReflect)]
