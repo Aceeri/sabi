@@ -2132,7 +2132,7 @@ dependencies = [
 
 [[package]]
 name = "sabi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bevy",
  "bevy_rapier3d",
@@ -2158,7 +2158,7 @@ dependencies = [
 
 [[package]]
 name = "sabi_derive"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proc-macro2",
  "quote",

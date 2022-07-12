@@ -2,7 +2,7 @@
 [package]
 edition = "2021"
 name = "sabi_derive"
-version = "0.1.0"
+version = "0.2.0"
 
 [lib]
 proc-macro = true
