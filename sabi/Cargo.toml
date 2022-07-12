@@ -14,7 +14,7 @@ version = "0.2.0"
 path = "src/lib.rs"
 
 [dependencies]
-sabi_derive = {path = "../sabi_derive"}
+sabi_derive = {version = "0.2", path = "../sabi_derive"}
 
 bevy_rapier3d = {version = "0.14", features = ["serde-serialize"]}
 bevy_renet = {version = "0.0.3", git = "https://github.com/lucaspoffo/renet", rev = "891951a"}
