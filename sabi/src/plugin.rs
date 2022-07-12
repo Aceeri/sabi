@@ -48,21 +48,14 @@ where
         if app.world.contains_resource::<crate::Server>() {
             app.add_meta_network_system(
                 crate::protocol::update::server_queue_interest::<C>
-                    //.run_if_resource_exists::<RenetServer>()
                     .before("send_interests")
                     .after("fetch_priority"),
             );
 
-            app.add_meta_network_system(
-                crate::protocol::priority::server_bump_filtered::<C, With<C>, 1>
-                    //.run_if_resource_exists::<RenetServer>()
-                    .before("fetch_priority"),
-            );
+            app.add_meta_network_system(crate::protocol::interest::component_changes::<C>);
 
             app.add_meta_network_system(
-                crate::protocol::priority::server_bump_filtered::<C, Changed<C>, 100>
-                    //.run_if_resource_exists::<RenetServer>()
-                    .before("fetch_priority"),
+                crate::protocol::interest::baseload_components::<C>.before("clear_baseload"),
             );
         }
 
@@ -184,13 +177,25 @@ where
     I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
 {
     fn build(&self, app: &mut App) {
-        app.insert_resource(crate::protocol::priority::PriorityAccumulator::new());
-        app.insert_resource(crate::protocol::priority::ReplicateSizeEstimates::new());
-        app.insert_resource(crate::protocol::priority::ReplicateMaxSize::default());
-        app.insert_resource(crate::protocol::priority::ComponentsToSend::new());
+        app.insert_resource(crate::protocol::interest::InterestsToSend::new());
+        app.insert_resource(crate::protocol::interest::ClientInterestQueues::new());
+        app.insert_resource(crate::protocol::interest::Baseload::new());
+        app.insert_resource(crate::protocol::interest::SentInterests::new());
+
+        app.insert_resource(crate::protocol::update::ClientEntityUpdates::new());
+
+        app.insert_resource(crate::protocol::ack::ClientAcks::new());
+
+        app.insert_resource(crate::protocol::demands::ReplicateSizeEstimates::new());
+        app.insert_resource(crate::protocol::demands::ReplicateMaxSize::default());
         app.insert_resource(crate::protocol::input::PerClientQueuedInputs::<I>::new());
 
         app.add_plugin(bevy_renet::RenetServerPlugin);
+
+        app.add_system(crate::protocol::interest::setup_baseload.label("setup_baseload"));
+        app.add_meta_network_system(
+            crate::protocol::interest::clear_baseloads.label("clear_baseload"),
+        );
 
         app.add_meta_network_system(
             crate::protocol::input::server_recv_input::<I>
@@ -205,11 +210,6 @@ where
                 .after("recv_input"),
         );
 
-        app.add_meta_network_system(
-            crate::protocol::priority::fetch_top_priority
-                .run_if_resource_exists::<RenetServer>()
-                .label("fetch_priority"),
-        );
         app.add_meta_network_system(
             server_send_interest
                 .run_if_resource_exists::<RenetServer>()

@@ -3,7 +3,7 @@ use bevy_rapier3d::{prelude::*, rapier::prelude::SharedShape};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{plugin::ReplicatePlugin, protocol::priority::RequireDependency, Replicate};
+use crate::{plugin::ReplicatePlugin, protocol::demands::RequireDependency, Replicate};
 
 pub struct ReplicatePhysicsPlugin;
 impl Plugin for ReplicatePhysicsPlugin {

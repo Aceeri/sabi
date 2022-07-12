@@ -12,10 +12,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{
-    priority::{ComponentsToSend, PriorityAccumulator, ReplicateSizeEstimates},
-    NetworkTick,
-};
+use super::{demands::ReplicateSizeEstimates, interest::InterestsToSend, ClientId, NetworkTick};
 
 pub const FRAME_BUFFER: u64 = 6;
 
@@ -35,7 +32,38 @@ impl UpdateMessage {
     }
 }
 
-#[derive(Deref, DerefMut, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone)]
+pub struct ClientEntityUpdates {
+    clients: BTreeMap<ClientId, EntityUpdate>,
+}
+
+impl ClientEntityUpdates {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&ClientId, &EntityUpdate)> {
+        self.clients.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&ClientId, &mut EntityUpdate)> {
+        self.clients.iter_mut()
+    }
+
+    pub fn get(&self, client_id: &ClientId) -> Option<&EntityUpdate> {
+        self.clients.get(client_id)
+    }
+
+    pub fn get_mut(&mut self, client_id: &ClientId) -> Option<&mut EntityUpdate> {
+        self.clients.get_mut(client_id)
+    }
+
+    pub fn upsert(&mut self, client_id: ClientId) -> &mut EntityUpdate {
+        self.clients.entry(client_id).or_default()
+    }
+}
+
+#[derive(Deref, DerefMut, Default, Clone, Serialize, Deserialize)]
 pub struct EntityUpdate {
     pub updates: BTreeMap<ServerEntity, ComponentsUpdate>,
 }
@@ -59,9 +87,7 @@ impl fmt::Debug for EntityUpdate {
 
 impl EntityUpdate {
     pub fn new() -> Self {
-        Self {
-            updates: Default::default(),
-        }
+        Self::default()
     }
 
     pub fn clear(&mut self) {
@@ -79,6 +105,14 @@ impl EntityUpdate {
                 }
             }
         }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&ServerEntity, &ComponentsUpdate)> {
+        self.updates.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&ServerEntity, &mut ComponentsUpdate)> {
+        self.updates.iter_mut()
     }
 }
 
@@ -249,29 +283,29 @@ pub fn server_clear_queue(mut updates: ResMut<EntityUpdate>) {
 }
 
 pub fn server_queue_interest<C>(
-    mut priority: ResMut<PriorityAccumulator>,
     mut estimate: ResMut<ReplicateSizeEstimates>,
-    mut updates: ResMut<EntityUpdate>,
-    to_send: Res<ComponentsToSend>,
+    mut updates: ResMut<ClientEntityUpdates>,
+    to_send: Res<InterestsToSend>,
     query: Query<&C>,
 ) where
     C: 'static + Send + Sync + Component + Replicate + Clone,
 {
-    for (entity, replicate_id) in to_send.iter() {
-        if *replicate_id == C::replicate_id() {
-            if let Ok(component) = query.get(*entity) {
-                let server_entity = ServerEntity::from_entity(*entity);
-                let component_def = component.clone().into_def();
-                let component_data = bincode::serialize(&component_def).unwrap();
+    for (client_id, interests) in to_send.iter() {
+        let entity_update = updates.upsert(*client_id);
+        for (entity, replicate_id) in interests.iter() {
+            if *replicate_id == C::replicate_id() {
+                if let Ok(component) = query.get(*entity) {
+                    let server_entity = ServerEntity::from_entity(*entity);
+                    let component_def = component.clone().into_def();
+                    let component_data = bincode::serialize(&component_def).unwrap();
 
-                estimate.add(C::replicate_id(), component_data.len());
+                    estimate.add(C::replicate_id(), component_data.len());
 
-                let update = updates
-                    .entry(server_entity)
-                    .or_insert(ComponentsUpdate::new());
-                update.insert(C::replicate_id(), component_data);
-
-                priority.clear(*entity, C::replicate_id());
+                    let update = entity_update
+                        .entry(server_entity)
+                        .or_insert(ComponentsUpdate::new());
+                    update.insert(C::replicate_id(), component_data);
+                }
             }
         }
     }
@@ -279,28 +313,31 @@ pub fn server_queue_interest<C>(
 
 pub fn server_send_interest(
     tick: Res<NetworkTick>,
-    updates: Res<EntityUpdate>,
+    updates: Res<ClientEntityUpdates>,
     mut server: ResMut<RenetServer>,
 ) {
-    let message = UpdateMessage {
-        tick: *tick,
-        entity_update: updates.clone(),
-    };
-    let serialized = bincode::serialize(&message).unwrap();
-    /*
-    crate::message_sample::try_add_sample("update", &serialized);
-    */
     let dict = crate::message_sample::DICTIONARIES
         .get("update")
         .expect("no update dictionary");
     let mut compressor =
         zstd::bulk::Compressor::with_dictionary(0, dict).expect("couldn't make compressor");
-    /*
-    let mut compressor = zstd::bulk::Compressor::new(0).expect("couldn't make compressor");
-        */
-    let compressed = compressor
-        .compress(&serialized.as_slice())
-        .expect("couldn't compress message");
 
-    server.broadcast_message(channel::COMPONENT, compressed);
+    for (client_id, update) in updates.iter() {
+        let message = UpdateMessage {
+            tick: *tick,
+            entity_update: update.clone(),
+        };
+        let serialized = bincode::serialize(&message).unwrap();
+        /*
+        crate::message_sample::try_add_sample("update", &serialized);
+        */
+        /*
+        let mut compressor = zstd::bulk::Compressor::new(0).expect("couldn't make compressor");
+            */
+        let compressed = compressor
+            .compress(&serialized.as_slice())
+            .expect("couldn't compress message");
+
+        server.send_message(*client_id, channel::COMPONENT, compressed)
+    }
 }
