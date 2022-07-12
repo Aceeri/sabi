@@ -3,7 +3,7 @@
 categories = ["game-engines", "networking"]
 description = "Derive macros for replication features in sabi"
 edition = "2021"
-keywords = ["networking", "client-server architecture", "prediction", "games", "bevy"]
+keywords = ["networking", "client server architecture", "prediction", "games", "bevy"]
 license = "MIT OR Apache-2.0"
 name = "sabi_derive"
 readme = "README.md"

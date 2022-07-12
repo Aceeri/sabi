@@ -2,7 +2,7 @@
 categories = ["game-engines", "networking"]
 description = "A client-server networking architecture for bevy."
 edition = "2021"
-keywords = ["networking", "client-server architecture", "prediction", "games", "bevy"]
+keywords = ["networking", "client server architecture", "prediction", "games", "bevy"]
 license = "MIT OR Apache-2.0"
 name = "sabi"
 readme = "../README.md"
