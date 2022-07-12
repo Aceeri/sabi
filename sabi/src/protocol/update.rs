@@ -333,7 +333,7 @@ pub fn server_send_interest(
             entity_update: update.clone(),
         };
         let serialized = bincode::serialize(&message).unwrap();
-        crate::message_sample::try_add_sample("update", &serialized);
+        //crate::message_sample::try_add_sample("update", &serialized);
         let compressed = compressor
             .compress(&serialized.as_slice())
             .expect("couldn't compress message");
