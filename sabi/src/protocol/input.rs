@@ -13,7 +13,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
-use super::{ack::NetworkAck, ClientId, NetworkTick};
+use super::{
+    ack::{ClientAcks, NetworkAck},
+    ClientId, NetworkTick,
+};
 
 pub const INPUT_RETAIN_BUFFER: i64 = 16;
 
@@ -119,6 +122,7 @@ pub fn server_recv_input<I>(
     tick: Res<NetworkTick>,
     mut server: ResMut<RenetServer>,
     mut queued_inputs: ResMut<PerClientQueuedInputs<I>>,
+    mut acks: ResMut<ClientAcks>,
 ) where
     I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
 {
@@ -129,6 +133,7 @@ pub fn server_recv_input<I>(
             let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
             let input_message: ClientInputMessage<I> = bincode::deserialize(&decompressed).unwrap();
 
+            acks.apply_ack(client_id, &input_message.ack);
             queued_inputs.upsert(client_id, input_message.inputs);
         }
     }

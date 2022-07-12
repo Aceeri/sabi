@@ -24,7 +24,7 @@ pub mod client;
 pub mod input;
 pub mod interest;
 pub mod lobby;
-pub mod priority;
+pub mod demands;
 pub mod resim;
 pub mod server;
 pub mod tick;

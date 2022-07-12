@@ -1,6 +1,6 @@
 use bevy::{prelude::*, reflect::FromReflect};
 use smallvec::SmallVec;
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry, BTreeMap};
 
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +14,17 @@ pub struct ClientAcks {
 impl ClientAcks {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn apply_ack(&mut self, client_id: ClientId, ack: &NetworkAck) {
+        match self.acks.entry(client_id) {
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().apply_ack(ack);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(ack.clone());
+            }
+        }
     }
 }
 
