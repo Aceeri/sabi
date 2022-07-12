@@ -44,6 +44,7 @@ pub fn setup_baseload(mut baseload: ResMut<Baseload>, mut server_events: EventRe
     for event in server_events.iter() {
         match event {
             ServerEvent::ClientConnected(client_id, _user_data) => {
+                info!("baseloading {}", client_id);
                 baseload.mark(*client_id);
             }
             _ => {}
@@ -69,7 +70,7 @@ pub fn baseload_components<C>(
 }
 
 pub fn clear_baseloads(mut baseload: ResMut<Baseload>) {
-    for (client, should_load) in baseload.iter_mut() {
+    for (_client_id, should_load) in baseload.iter_mut() {
         *should_load = false;
     }
 }
@@ -105,7 +106,7 @@ impl SentInterests {
 }
 
 /// Queue up components that we need to send.
-pub fn send_interests(
+pub fn queue_interests(
     mut queues: ResMut<ClientInterestQueues>,
     demands: Res<ReplicateDemands>,
     estimates: Res<ReplicateSizeEstimates>,
@@ -119,6 +120,7 @@ pub fn send_interests(
         let mut unsent = Vec::new();
 
         while let Some((entity, replicate_id)) = queue.pop_front() {
+            //info!("attempting: ({:?}, {:?})", entity, replicate_id);
             let mut grouped_ids: SmallVec<[&ReplicateId; 3]> = SmallVec::new();
             grouped_ids.push(&replicate_id);
             if let Some(group) = demands.require.get(&replicate_id) {
@@ -151,6 +153,7 @@ pub fn send_interests(
         }
 
         for interest in unsent.into_iter().rev() {
+            info!("unsent, repushing: {:?}", interest);
             queue.push_front(interest);
         }
     }
@@ -341,7 +344,7 @@ impl InterestsToSend {
     }
 
     pub fn clear(&mut self) {
-        for (client, interests) in self.iter_mut() {
+        for (_client_id, interests) in self.iter_mut() {
             interests.clear();
         }
     }

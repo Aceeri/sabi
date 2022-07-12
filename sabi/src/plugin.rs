@@ -48,8 +48,8 @@ where
         if app.world.contains_resource::<crate::Server>() {
             app.add_meta_network_system(
                 crate::protocol::update::server_queue_interest::<C>
-                    .before("send_interests")
-                    .after("fetch_priority"),
+                    .before("server_send_interest")
+                    .after("queue_interests"),
             );
 
             app.add_meta_network_system(crate::protocol::interest::component_changes::<C>);
@@ -211,13 +211,17 @@ where
         );
 
         app.add_meta_network_system(
-            server_send_interest
-                .run_if_resource_exists::<RenetServer>()
-                .label("send_interests"),
+            crate::protocol::interest::queue_interests.label("queue_interests"),
         );
 
         app.add_meta_network_system(
-            crate::protocol::update::server_clear_queue.after("send_interests"),
+            server_send_interest
+                .run_if_resource_exists::<RenetServer>()
+                .label("server_send_interest"),
+        );
+
+        app.add_meta_network_system(
+            crate::protocol::update::server_clear_queue.after("server_send_interest"),
         );
     }
 }

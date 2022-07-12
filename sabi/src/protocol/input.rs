@@ -154,7 +154,7 @@ pub fn server_apply_input<I>(
                 commands.entity(*entity).insert(input.clone());
             }
         } else {
-            error!("no input for player {} on tick {}", client, tick.tick());
+            //error!("no input for player {} on tick {}", client, tick.tick());
         }
     }
 }

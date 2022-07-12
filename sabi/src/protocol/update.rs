@@ -278,8 +278,10 @@ pub fn client_update<C>(
     }
 }
 
-pub fn server_clear_queue(mut updates: ResMut<EntityUpdate>) {
-    updates.clear();
+pub fn server_clear_queue(mut updates: ResMut<ClientEntityUpdates>) {
+    for (_client_id, update) in updates.iter_mut() {
+        update.clear();
+    }
 }
 
 pub fn server_queue_interest<C>(
@@ -321,6 +323,9 @@ pub fn server_send_interest(
         .expect("no update dictionary");
     let mut compressor =
         zstd::bulk::Compressor::with_dictionary(0, dict).expect("couldn't make compressor");
+    /*
+    let mut compressor = zstd::bulk::Compressor::new(0).expect("couldn't make compressor");
+    */
 
     for (client_id, update) in updates.iter() {
         let message = UpdateMessage {
@@ -328,12 +333,7 @@ pub fn server_send_interest(
             entity_update: update.clone(),
         };
         let serialized = bincode::serialize(&message).unwrap();
-        /*
         crate::message_sample::try_add_sample("update", &serialized);
-        */
-        /*
-        let mut compressor = zstd::bulk::Compressor::new(0).expect("couldn't make compressor");
-            */
         let compressed = compressor
             .compress(&serialized.as_slice())
             .expect("couldn't compress message");
