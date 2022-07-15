@@ -14,6 +14,8 @@ use super::{
     ClientId, NetworkTick, Replicate, ReplicateId,
 };
 
+pub const RESEND_INTEREST_BUFFER: i64 = 32;
+
 pub type Interest = (Entity, ReplicateId);
 
 #[derive(Debug, Clone, Default)]
@@ -93,25 +95,107 @@ pub fn component_changes<C>(
     }
 }
 
-/// Clients interests for this frame.
-#[derive(Default, Clone)]
-pub struct SentInterests {
-    sent: BTreeMap<NetworkTick, Vec<Interest>>,
+/// Sent clients interests for this frame.
+#[derive(Default, Debug, Clone)]
+pub struct ClientUnackedInterests {
+    clients: BTreeMap<ClientId, UnackedInterests>,
 }
 
-impl SentInterests {
+impl ClientUnackedInterests {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn record(&mut self, client_id: ClientId, tick: NetworkTick, interests: Vec<Interest>) {
+        self.clients
+            .entry(client_id)
+            .or_default()
+            .record(tick, interests);
+    }
+
+    pub fn record_from_queue(&mut self, tick: NetworkTick, queue: InterestsToSend) {
+        for (client_id, interests) in queue.iter() {
+            self.record(client_id, tick, interests);
+        }
+    }
+
+    pub fn ack(&mut self, client_id: ClientId, tick: NetworkTick) {
+        if let Some(sent) = self.clients.get(client_id) {
+            sent.ack(tick);
+        }
+    }
+
+    pub fn resend_unacked(&mut self, tick: NetworkTick, queues: ClientInterestQueues) {
+        for (client_id, sent) in self.clients {
+            let queue = queues.entry(client_id).or_default();
+            sent.resend_unacked(tick, queue);
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&ClientId, &UnackedInterests)> {
+        self.clients.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&ClientId, &mut UnackedInterests)> {
+        self.clients.iter_mut()
+    }
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct UnackedInterests {
+    unacked: BTreeMap<NetworkTick, Vec<Interest>>,
+}
+
+impl UnackedInterests {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn record(&mut self, tick: NetworkTick, interests: Vec<Interest>) {
+        self.unacked.entry(tick).or_default().extend(interests);
+    }
+
+    pub fn ack(&mut self, tick: NetworkTick) {
+        self.unacked.remove(tick);
+    }
+
+    pub fn resend_unacked(&mut self, current_tick: NetworkTick, queue: &mut InterestQueue<Interest>) {
+        let mut resend = Vec::new();
+        for (tick, interests) in &self.unacked.iter().filter(|tick| {
+            current_tick.tick() as i64 - tick.tick() as i64 < RESEND_INTEREST_BUFFER
+        }) {
+            for interest in interests.iter() {
+                queue.push_front(interest);
+            }
+
+            resend.push(tick);
+        }
+
+        for tick in resend {
+            self.unacked.remove(tick);
+        }
+    }
+}
+
+pub fn requeue_unacked(
+    tick: Res<NetworkTick>,
+    mut unacked: ResMut<ClientUnackedInterests>,
+    mut queues: ResMut<ClientInterestQueues>,
+) {
+    for (client_id, queue) in unacked.iter_mut() {
+        queue.
     }
 }
 
 /// Queue up components that we need to send.
 pub fn queue_interests(
+    tick: Res<NetworkTick>,
     mut queues: ResMut<ClientInterestQueues>,
     demands: Res<ReplicateDemands>,
     estimates: Res<ReplicateSizeEstimates>,
     max: Res<ReplicateMaxSize>,
     mut to_send: ResMut<InterestsToSend>,
+    mut sent_history: ResMut<SentInterests>,
 ) {
     to_send.clear();
 
@@ -157,6 +241,8 @@ pub fn queue_interests(
             queue.push_front(interest);
         }
     }
+
+    sent_history.record_from_queue(tick, to_send);
 }
 
 #[derive(Default, Clone)]
