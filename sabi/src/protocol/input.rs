@@ -18,7 +18,12 @@ use super::{
     ClientId, NetworkTick,
 };
 
-pub const INPUT_RETAIN_BUFFER: i64 = 16;
+/// How many inputs we should retain for replaying inputs.
+pub const INPUT_RETAIN_BUFFER: i64 = 32;
+/// How many inputs we should send to the server for future ticks.
+/// 
+/// TODO: These should probably be determined by RTT and time dilation.
+pub const INPUT_SEND_BUFFER: i64 = 6;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientInputMessage<I> {
@@ -106,15 +111,15 @@ impl<I> QueuedInputs<I> {
     /// Push an input into the queue
     pub fn push(&mut self, tick: NetworkTick, input: I) {
         self.queue.insert(tick, input);
-        self.retain();
+        self.retain(INPUT_RETAIN_BUFFER);
     }
 
     /// Retain any in the queue that are within a buffer range.
-    pub fn retain(&mut self) {
+    pub fn retain(&mut self, buffer: i64) {
         let newest = self.queue.keys().max().cloned().unwrap_or_default();
 
         self.queue
-            .retain(|tick, _| (newest.tick() as i64) - (tick.tick() as i64) < INPUT_RETAIN_BUFFER);
+            .retain(|tick, _| (newest.tick() as i64) - (tick.tick() as i64) < buffer);
     }
 }
 
@@ -174,10 +179,13 @@ pub fn client_send_input<I>(
         + for<'de> Deserialize<'de>
         + std::fmt::Debug,
 {
+    let mut send_buffer = input_buffer.clone();
+    send_buffer.retain(INPUT_SEND_BUFFER);
+
     let message = ClientInputMessage {
         tick: tick.clone(),
         ack: NetworkAck::new(tick.clone()),
-        inputs: input_buffer.clone(),
+        inputs: send_buffer,
     };
 
     let serialized = bincode::serialize(&message).unwrap();

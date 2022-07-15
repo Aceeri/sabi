@@ -3,7 +3,7 @@ members = ["sabi", "sabi_derive"]
 resolver = "2"
 
 [patch.crates-io]
-bevy_rapier3d = {version = "0.15", path = "../bevy_rapier/bevy_rapier3d"}
+#bevy_rapier3d = {version = "0.15", path = "../bevy_rapier/bevy_rapier3d"}
 #iyes_loopless = {path = "../iyes_loopless"}
 
 [patch."https://github.com/lucaspoffo/renet"]

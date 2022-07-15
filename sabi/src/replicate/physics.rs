@@ -10,8 +10,6 @@ impl Plugin for ReplicatePhysicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(ReplicatePlugin::<RigidBody>::default());
         app.add_plugin(ReplicatePlugin::<Velocity>::default());
-        app.add_plugin(ReplicatePlugin::<MassProperties>::default());
-        app.add_plugin(ReplicatePlugin::<AdditionalMassProperties>::default());
         app.add_plugin(ReplicatePlugin::<LockedAxes>::default());
         app.add_plugin(ReplicatePlugin::<ExternalForce>::default());
         app.add_plugin(ReplicatePlugin::<ExternalImpulse>::default());
@@ -27,6 +25,9 @@ impl Plugin for ReplicatePhysicsPlugin {
         app.add_plugin(ReplicatePlugin::<SolverGroups>::default());
         app.add_plugin(ReplicatePlugin::<Collider>::default());
         app.add_plugin(ReplicatePlugin::<ColliderScale>::default());
+
+        app.add_plugin(ReplicatePlugin::<AdditionalMassProperties>::default());
+        app.add_plugin(ReplicatePlugin::<ColliderMassProperties>::default());
 
         app.add_plugin(RequireDependency::<Collider, RigidBody>::default());
     }
@@ -52,10 +53,8 @@ pub struct VelocityDef {
     pub angvel: Vec3,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(remote = "MassProperties")]
-#[replicate(remote = "MassProperties")]
-#[replicate(crate = "crate")]
 pub struct MassPropertiesDef {
     pub local_center_of_mass: Vec3,
     pub mass: f32,
@@ -67,7 +66,20 @@ pub struct MassPropertiesDef {
 #[serde(remote = "AdditionalMassProperties")]
 #[replicate(remote = "AdditionalMassProperties")]
 #[replicate(crate = "crate")]
-pub struct AdditionalMassPropertiesDef(#[serde(with = "MassPropertiesDef")] pub MassProperties);
+pub enum AdditionalMassPropertiesDef {
+    Mass(f32),
+    MassProperties(#[serde(with = "MassPropertiesDef")] MassProperties),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
+#[serde(remote = "ColliderMassProperties")]
+#[replicate(remote = "ColliderMassProperties")]
+#[replicate(crate = "crate")]
+pub enum ColliderMassPropertiesDef {
+    Density(f32),
+    Mass(f32),
+    MassProperties(#[serde(with = "MassPropertiesDef")] MassProperties),
+}
 
 impl Replicate for LockedAxes {
     type Def = u8;
