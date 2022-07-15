@@ -180,7 +180,8 @@ where
         app.insert_resource(crate::protocol::interest::InterestsToSend::new());
         app.insert_resource(crate::protocol::interest::ClientInterestQueues::new());
         app.insert_resource(crate::protocol::interest::Baseload::new());
-        app.insert_resource(crate::protocol::interest::SentInterests::new());
+        app.insert_resource(crate::protocol::interest::ClientUnackedInterests::new());
+        //app.insert_resource(crate::protocol::interest::SentInterests::new());
 
         app.insert_resource(crate::protocol::update::ClientEntityUpdates::new());
 
