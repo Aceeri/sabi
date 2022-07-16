@@ -2,7 +2,7 @@ use std::{marker::PhantomData, time::Duration};
 
 use bevy::prelude::*;
 use bevy_renet::{
-    renet::{RenetClient, RenetError, RenetServer},
+    renet::{RenetClient, RenetError, RenetServer, RechannelError},
     RenetClientPlugin,
 };
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
@@ -159,7 +159,7 @@ where
         app.add_plugin(ReplicatePlugin::<Name>::default());
 
         app.insert_resource(PreviousRenetError(None));
-        app.add_system(log_on_error_system);
+        app.add_system(handle_renet_error);
     }
 }
 
@@ -288,11 +288,25 @@ where
 #[derive(Debug)]
 pub struct PreviousRenetError(Option<String>);
 
-pub fn log_on_error_system(
+pub fn handle_renet_error(
+    mut commands: Commands,
+
+    mut client: Option<ResMut<RenetClient>>,
+    mut server: Option<ResMut<RenetServer>>,
+
     mut previous: ResMut<PreviousRenetError>,
     mut renet_error: EventReader<RenetError>,
 ) {
+    let mut disconnected = false;
+
     for err in renet_error.iter() {
+        match err {
+            RenetError::Rechannel(RechannelError::ClientDisconnected(_)) => {
+                disconnected = true;
+            }
+            _ => {}
+        }
+
         if let Some(previous_err) = &previous.0 {
             if previous_err == &err.to_string() {
                 continue;
@@ -301,5 +315,9 @@ pub fn log_on_error_system(
 
         error!("{}", err);
         previous.0 = Some(err.to_string());
+    }
+
+    if client.is_some() && disconnected {
+        commands.remove_resource::<RenetClient>();
     }
 }
