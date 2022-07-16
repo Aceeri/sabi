@@ -23,6 +23,8 @@ pub const INPUT_RETAIN_BUFFER: i64 = 32;
 /// How many inputs we should send to the server for future ticks.
 /// 
 /// TODO: These should probably be determined by RTT and time dilation.
+/// We probably should send less than the frame buffer since by the time it
+/// gets to the server, most of these inputs will be late.
 pub const INPUT_SEND_BUFFER: i64 = 6;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
