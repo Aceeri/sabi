@@ -26,7 +26,6 @@ pub const INPUT_SEND_BUFFER: i64 = 3;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct InputDeviation {
-    pub mean: f32,
     pub deviation: f32,
 }
 
@@ -62,7 +61,7 @@ impl ReceivedHistory {
 
     pub fn push(&mut self, sample: Duration) {
         if let Some(previous) = self.previous {
-            let new_sample = previous.saturating_sub(sample);
+            let new_sample = sample.saturating_sub(previous);
             self.times.push_back(new_sample.as_secs_f32());
 
             if self.times.len() > 128 {
@@ -94,7 +93,7 @@ impl ReceivedHistory {
         let standard_deviation = variance.sqrt();
 
         InputDeviation {
-            mean: mean,
+            //mean: mean,
             deviation: standard_deviation,
         }
     }
