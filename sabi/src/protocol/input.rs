@@ -28,7 +28,7 @@ pub const INPUT_RETAIN_BUFFER: i64 = 32;
 /// gets to the server, most of these inputs will be late.
 pub const INPUT_SEND_BUFFER: i64 = 6;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct InputDeviation {
     pub mean: f32,
     pub deviation: f32,
@@ -78,6 +78,10 @@ impl ReceivedHistory {
     }
 
     pub fn deviation(&self) -> InputDeviation {
+        if self.times.len() == 0 {
+            return InputDeviation::default();
+        }
+
         let samples = self.times.len() as f32;
         let sum: f32 = self.times.iter().sum();
         let mean = sum / samples;

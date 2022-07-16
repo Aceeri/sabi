@@ -130,17 +130,9 @@ impl Stage for NetworkSimulationStage {
             self.info = info.clone();
         }
 
-        // Don't run unless we are connected and have received a message.
-        if world.get_resource::<NetworkTick>().is_none() {
-            return;
+        if world.contains_resource::<crate::Server>() && !world.contains_resource::<NetworkTick>() {
+            world.insert_resource(NetworkTick::default());
         }
-
-        let increment_network_tick = |world: &mut World| {
-            world
-                .get_resource_mut::<NetworkTick>()
-                .expect("expected network tick")
-                .increment_tick();
-        };
 
         self.info.accumulator += {
             let time = world.get_resource::<Time>();
@@ -151,51 +143,59 @@ impl Stage for NetworkSimulationStage {
             }
         };
 
+        let increment_network_tick = |world: &mut World| {
+            world
+                .get_resource_mut::<NetworkTick>()
+                .expect("expected network tick")
+                .increment_tick();
+        };
+
         while self.info.accumulator >= self.info.timestep() {
             self.info.accumulator -= self.info.timestep();
 
-            increment_network_tick(world);
+            if world.contains_resource::<NetworkTick>() {
+                increment_network_tick(world);
 
-            world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
-            self.schedule.run(world);
-            world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
+                world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
+                self.schedule.run(world);
+                world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
+            }
+
             self.meta.run(world);
         }
 
-        let current_tick = world
-            .get_resource::<NetworkTick>()
-            .expect("expected network tick")
-            .clone();
-        if let Some(rewind) = world.get_resource::<Rewind>() {
-            let rewind_tick = rewind.0.clone();
+        if let Some(current_tick) = world.get_resource::<NetworkTick>().cloned() {
+            if let Some(rewind) = world.get_resource::<Rewind>() {
+                let rewind_tick = rewind.0.clone();
 
-            if rewind_tick.tick() < current_tick.tick() {
-                world.insert_resource(rewind_tick);
-
-                world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
-                self.rewind.run(world);
-                self.input_history.run(world);
-                self.update_history.run(world);
-                world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
-
-                for tick in rewind_tick.tick()..current_tick.tick() {
-                    increment_network_tick(world);
+                if rewind_tick.tick() < current_tick.tick() {
+                    world.insert_resource(rewind_tick);
 
                     world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
-                    self.schedule.run(world);
+                    self.rewind.run(world);
                     self.input_history.run(world);
                     self.update_history.run(world);
                     world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
+
+                    for tick in rewind_tick.tick()..current_tick.tick() {
+                        increment_network_tick(world);
+
+                        world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
+                        self.schedule.run(world);
+                        self.input_history.run(world);
+                        self.update_history.run(world);
+                        world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
+                    }
                 }
+
+                let resimmed_current_tick = world
+                    .get_resource::<NetworkTick>()
+                    .expect("expected network tick")
+                    .clone();
+                assert_eq!(current_tick.tick(), resimmed_current_tick.tick());
+
+                world.remove_resource::<Rewind>();
             }
-
-            let resimmed_current_tick = world
-                .get_resource::<NetworkTick>()
-                .expect("expected network tick")
-                .clone();
-            assert_eq!(current_tick.tick(), resimmed_current_tick.tick());
-
-            world.remove_resource::<Rewind>();
         }
 
         world.insert_resource(self.info.clone());

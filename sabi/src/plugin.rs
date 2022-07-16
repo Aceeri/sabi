@@ -68,6 +68,7 @@ where
             app.add_meta_network_system(
                 crate::protocol::resim::store_snapshot::<C>
                     .run_if_resource_exists::<RenetClient>()
+                    .run_if_resource_exists::<NetworkTick>()
                     .run_if(client_connected),
             );
             app.add_rewind_network_system(crate::protocol::resim::rewind::<C>);
@@ -262,17 +263,22 @@ where
         );
 
         app.add_update_history_network_system(
-            crate::protocol::update::client_apply_server_update.label("client_apply_server_update"),
+            crate::protocol::update::client_apply_server_update
+                .run_if_resource_exists::<RenetClient>()
+                .run_if_resource_exists::<NetworkTick>()
+                .label("client_apply_server_update"),
         );
 
         app.add_meta_network_system(
             crate::protocol::input::client_update_input_buffer::<I>
+                .run_if_resource_exists::<NetworkTick>()
                 .label("client_update_input_buffer"),
         );
 
         app.add_meta_network_system(
             crate::protocol::input::client_send_input::<I>
                 .run_if_resource_exists::<RenetClient>()
+                .run_if_resource_exists::<NetworkTick>()
                 .run_if(client_connected)
                 .label("client_send_input")
                 .before("client_recv_interest")
@@ -281,6 +287,7 @@ where
 
         app.add_input_history_network_system(
             crate::protocol::input::client_apply_input_buffer::<I>
+                .run_if_resource_exists::<NetworkTick>()
                 //.run_if(client_connected)
                 .label("client_apply_input_buffer"),
         );
@@ -310,6 +317,7 @@ pub fn handle_client_disconnect(
     mut commands: Commands,
     tick: Option<Res<NetworkTick>>,
     client: Option<Res<RenetClient>>,
+    server: Option<Res<RenetServer>>,
 ) {
     if let Some(client) = client {
         let disconnected = client.disconnected();
@@ -319,7 +327,7 @@ pub fn handle_client_disconnect(
             commands.remove_resource::<NetworkTick>();
         }
     } else {
-        if tick.is_some() {
+        if !server.is_some() && tick.is_some() {
             commands.remove_resource::<NetworkTick>();
         }
     }

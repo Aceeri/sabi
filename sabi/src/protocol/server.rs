@@ -18,7 +18,7 @@ pub fn new_renet_server<S: AsRef<str>>(
 ) -> Result<RenetServer, Box<dyn Error>> {
     let local_ip = local_ip.as_ref();
 
-    if local_ip == "127.0.0.1" {
+    if local_ip == "127.0.0.1" || local_ip == "0.0.0.0" {
         public_ip = Some("127.0.0.1".to_owned());
     }
 

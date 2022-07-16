@@ -185,13 +185,17 @@ impl UpdateMessages {
     }
 }
 
-pub fn client_frame_buffer(client: &RenetClient, deviation: &InputDeviation) -> f32 {
+pub fn client_frame_buffer(
+    sim_info: &NetworkSimulationInfo,
+    client: &RenetClient,
+    deviation: &InputDeviation,
+) -> f32 {
     let info = client.network_info();
 
     // 2nd standard deviation so its ~2.1% chance we fall outside of it.
     let deviation = deviation.deviation * 2.0;
-    let extra_buffer = 2.5;
-    info.rtt / 2.0 + deviation + info.rtt / 2.0 + extra_buffer
+    let extra_buffer = sim_info.step.as_secs_f32() * 3.0;
+    info.rtt / 2.0 + deviation + extra_buffer
 }
 
 pub fn client_recv_interest(
@@ -220,7 +224,9 @@ pub fn client_recv_interest(
 
         let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
 
-        let frame_buffer = client_frame_buffer(&client, &message.input_deviation);
+        let frame_buffer =
+            client_frame_buffer(&*network_sim_info, &client, &message.input_deviation);
+        dbg!("frame_buffer: {:?}", &frame_buffer);
 
         match tick {
             Some(ref tick) => {
@@ -232,8 +238,11 @@ pub fn client_recv_interest(
                 }
             }
             None => {
+                dbg!("first tick", &message.tick);
                 commands.insert_resource(message.tick);
-                network_sim_info.accumulator = Duration::from_secs_f32(frame_buffer);
+                let default_buffer = network_sim_info.step.as_secs_f32() * 5.0;
+                network_sim_info.accumulator =
+                    Duration::from_secs_f32(frame_buffer.max(default_buffer));
             }
         }
 
