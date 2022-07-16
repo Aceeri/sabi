@@ -160,6 +160,7 @@ where
 
         app.insert_resource(PreviousRenetError(None));
         app.add_system(handle_renet_error);
+        app.add_system(handle_client_disconnect);
     }
 }
 
@@ -189,7 +190,8 @@ where
 
         app.insert_resource(crate::protocol::demands::ReplicateSizeEstimates::new());
         app.insert_resource(crate::protocol::demands::ReplicateMaxSize::default());
-        app.insert_resource(crate::protocol::input::PerClientQueuedInputs::<I>::new());
+        app.insert_resource(crate::protocol::input::ClientQueuedInputs::<I>::new());
+        app.insert_resource(crate::protocol::input::ClientReceivedHistory::new());
 
         app.add_plugin(bevy_renet::RenetServerPlugin);
 
@@ -289,24 +291,10 @@ where
 pub struct PreviousRenetError(Option<String>);
 
 pub fn handle_renet_error(
-    mut commands: Commands,
-
-    mut client: Option<ResMut<RenetClient>>,
-    mut server: Option<ResMut<RenetServer>>,
-
     mut previous: ResMut<PreviousRenetError>,
     mut renet_error: EventReader<RenetError>,
 ) {
-    let mut disconnected = false;
-
     for err in renet_error.iter() {
-        match err {
-            RenetError::Rechannel(RechannelError::ClientDisconnected(_)) => {
-                disconnected = true;
-            }
-            _ => {}
-        }
-
         if let Some(previous_err) = &previous.0 {
             if previous_err == &err.to_string() {
                 continue;
@@ -316,8 +304,17 @@ pub fn handle_renet_error(
         error!("{}", err);
         previous.0 = Some(err.to_string());
     }
+}
 
-    if client.is_some() && disconnected {
-        commands.remove_resource::<RenetClient>();
+pub fn handle_client_disconnect(
+    mut commands: Commands,
+    client: Option<Res<RenetClient>>,
+) {
+    if let Some(client) = client {
+        let disconnected = client.disconnected();
+        if let Some(reason) = disconnected {
+            error!("client disconnected: {}", reason);
+            commands.remove_resource::<RenetClient>();
+        }
     }
 }

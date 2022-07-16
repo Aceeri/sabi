@@ -12,13 +12,15 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{demands::ReplicateSizeEstimates, interest::InterestsToSend, ClientId, NetworkTick};
+use super::{demands::ReplicateSizeEstimates, interest::InterestsToSend, ClientId, NetworkTick, input::{InputDeviation, ClientReceivedHistory}};
 
 pub const FRAME_BUFFER: u64 = 6;
+pub const NO_DILATION_BUFFER: f32 = 0.2;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateMessage {
     pub tick: NetworkTick,
+    pub input_deviation: InputDeviation,
     pub entity_update: EntityUpdate,
 }
 
@@ -177,6 +179,11 @@ impl UpdateMessages {
     }
 }
 
+pub fn client_frame_buffer(client: Res<RenetClient>) -> f32 {
+    let info = client.network_info();
+    info.rtt / 2.0 + 2.5
+}
+
 pub fn client_recv_interest(
     mut commands: Commands,
     mut network_sim_info: ResMut<NetworkSimulationInfo>,
@@ -203,18 +210,24 @@ pub fn client_recv_interest(
 
         let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
 
-        let diff = tick.tick() as i64 - message.tick.tick() as i64;
+        let diff = (tick.tick() as i64 - message.tick.tick() as i64) as f32;
+        /*
         if diff < 0 {
             error!("falling behind server, hard stepping tick");
             *tick = NetworkTick::new(message.tick.tick() + FRAME_BUFFER);
         }
+    */
 
-        if diff > FRAME_BUFFER as i64 {
-            network_sim_info.accel(0.01);
-        } else if diff < FRAME_BUFFER as i64 {
-            network_sim_info.decel(0.01);
-        } else if diff == FRAME_BUFFER as i64 {
+
+        let info = client.network_info();
+        let frame_buffer = info.rtt / 2.0 + 2.5;
+        
+        if diff < frame_buffer + NO_DILATION_BUFFER || diff > frame_buffer + NO_DILATION_BUFFER {
             network_sim_info.accel(0.0);
+        } else if diff > frame_buffer {
+            network_sim_info.accel(0.01);
+        } else if diff < frame_buffer {
+            network_sim_info.decel(0.01);
         }
 
         match rewind {
@@ -315,6 +328,7 @@ pub fn server_queue_interest<C>(
 
 pub fn server_send_interest(
     tick: Res<NetworkTick>,
+    mut history: ResMut<ClientReceivedHistory>,
     updates: Res<ClientEntityUpdates>,
     mut server: ResMut<RenetServer>,
 ) {
@@ -328,8 +342,11 @@ pub fn server_send_interest(
     */
 
     for (client_id, update) in updates.iter() {
+        let input_deviation = history.deviation(*client_id);
+
         let message = UpdateMessage {
             tick: *tick,
+            input_deviation: input_deviation,
             entity_update: update.clone(),
         };
         let serialized = bincode::serialize(&message).unwrap();

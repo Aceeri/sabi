@@ -181,12 +181,12 @@ impl UnackedInterests {
     }
 }
 
-pub fn requeue_unacked(
+pub fn resend_unacked(
     tick: Res<NetworkTick>,
     mut unacked: ResMut<ClientUnackedInterests>,
     mut queues: ResMut<ClientInterestQueues>,
 ) {
-    for (client_id, queue) in unacked.iter_mut() {}
+    unacked.resend_unacked(*tick, &mut *queues);
 }
 
 /// Queue up components that we need to send.
@@ -203,7 +203,7 @@ pub fn queue_interests(
 
     for (client_id, queue) in queues.iter_mut() {
         let mut used = 0usize;
-        let mut unsent = Vec::new();
+        let mut unsent: SmallVec<[Interest; 3]> = SmallVec::new();
 
         while let Some((entity, replicate_id)) = queue.pop_front() {
             //info!("attempting: ({:?}, {:?})", entity, replicate_id);

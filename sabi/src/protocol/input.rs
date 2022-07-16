@@ -1,4 +1,5 @@
-use std::collections::BTreeMap;
+use std::collections::VecDeque;
+use std::{collections::BTreeMap, time::Duration};
 use std::fmt::Debug;
 
 use bevy::{
@@ -28,6 +29,71 @@ pub const INPUT_RETAIN_BUFFER: i64 = 32;
 pub const INPUT_SEND_BUFFER: i64 = 6;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InputDeviation {
+    pub mean: f32,
+    pub deviation: f32, 
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct ClientReceivedHistory {
+    clients: BTreeMap<ClientId, ReceivedHistory>
+}
+
+impl ClientReceivedHistory {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn push(&mut self, client_id: ClientId, sample: Duration) {
+        self.clients.entry(client_id).or_default().push(sample);
+    }
+
+    pub fn deviation(&mut self, client_id: ClientId) -> InputDeviation {
+        self.clients.entry(client_id).or_default().deviation()
+    }
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct ReceivedHistory {
+    previous: Option<Duration>,
+    times: VecDeque<f32>,
+}
+
+impl ReceivedHistory {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn push(&mut self, sample: Duration) {
+        if let Some(previous) = self.previous {
+            let new_sample = previous.saturating_sub(sample);
+            self.times.push_back(new_sample.as_secs_f32());
+
+            if self.times.len() > 64 {
+                self.times.pop_front();
+            }
+        }
+        
+        self.previous = Some(sample);
+    }
+
+    pub fn deviation(&self) -> InputDeviation {
+        let samples = self.times.len() as f32;
+        let sum: f32 = self.times.iter().sum();
+        let mean = sum / samples;
+
+        let deviations_sum: f32 = self.times.iter().map(|sample| (sample - mean) * (sample - mean)).sum();
+        let variance = deviations_sum / samples;
+        let standard_deviation = variance.sqrt();
+
+        InputDeviation {
+            mean: mean,
+            deviation: standard_deviation,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientInputMessage<I> {
     pub tick: NetworkTick,
     pub ack: NetworkAck,
@@ -35,11 +101,11 @@ pub struct ClientInputMessage<I> {
 }
 
 #[derive(Debug, Clone)]
-pub struct PerClientQueuedInputs<I> {
+pub struct ClientQueuedInputs<I> {
     clients: HashMap<ClientId, QueuedInputs<I>>,
 }
 
-impl<I> PerClientQueuedInputs<I> {
+impl<I> ClientQueuedInputs<I> {
     pub fn new() -> Self {
         Self {
             clients: HashMap::new(),
@@ -126,9 +192,11 @@ impl<I> QueuedInputs<I> {
 }
 
 pub fn server_recv_input<I>(
+    time: Res<Time>,
+    mut recv_history: ResMut<ClientReceivedHistory>,
     tick: Res<NetworkTick>,
     mut server: ResMut<RenetServer>,
-    mut queued_inputs: ResMut<PerClientQueuedInputs<I>>,
+    mut queued_inputs: ResMut<ClientQueuedInputs<I>>,
     mut acks: ResMut<ClientAcks>,
 ) where
     I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
@@ -140,6 +208,7 @@ pub fn server_recv_input<I>(
             let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
             let input_message: ClientInputMessage<I> = bincode::deserialize(&decompressed).unwrap();
 
+            recv_history.push(client_id, time.time_since_startup());
             acks.apply_ack(client_id, &input_message.ack);
             queued_inputs.upsert(client_id, input_message.inputs);
         }
@@ -150,7 +219,7 @@ pub fn server_apply_input<I>(
     mut commands: Commands,
     entities: &Entities,
     tick: Res<NetworkTick>,
-    queued_inputs: Res<PerClientQueuedInputs<I>>,
+    queued_inputs: Res<ClientQueuedInputs<I>>,
     lobby: Res<Lobby>,
 ) where
     I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
