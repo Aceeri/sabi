@@ -62,9 +62,9 @@ impl NetworkSimulationInfo {
 
     pub fn timestep(&self) -> Duration {
         if self.accel {
-            self.step.saturating_add(self.accel_step)
-        } else {
             self.step.saturating_sub(self.accel_step)
+        } else {
+            self.step.saturating_add(self.accel_step)
         }
     }
 }
@@ -143,6 +143,8 @@ impl Stage for NetworkSimulationStage {
             }
         };
 
+        world.insert_resource(self.info.clone());
+
         let increment_network_tick = |world: &mut World| {
             world
                 .get_resource_mut::<NetworkTick>()
@@ -152,6 +154,7 @@ impl Stage for NetworkSimulationStage {
 
         while self.info.accumulator >= self.info.timestep() {
             self.info.accumulator -= self.info.timestep();
+            world.insert_resource(self.info.clone());
 
             if world.contains_resource::<NetworkTick>() {
                 increment_network_tick(world);
@@ -162,6 +165,10 @@ impl Stage for NetworkSimulationStage {
             }
 
             self.meta.run(world);
+            if let Some(info) = world.get_resource::<NetworkSimulationInfo>() {
+                self.info = info.clone();
+            }
+
         }
 
         if let Some(current_tick) = world.get_resource::<NetworkTick>().cloned() {

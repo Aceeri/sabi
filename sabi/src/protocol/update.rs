@@ -20,9 +20,6 @@ use super::{
     ClientId, NetworkTick,
 };
 
-pub const FRAME_BUFFER: u64 = 6;
-pub const NO_DILATION_BUFFER: f32 = 0.2;
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateMessage {
     pub tick: NetworkTick,
@@ -195,7 +192,7 @@ pub fn client_frame_buffer(
     // 2nd standard deviation so its ~2.1% chance we fall outside of it.
     let deviation = deviation.deviation * 2.0;
     let extra_buffer = sim_info.step.as_secs_f32() * 3.0;
-    info.rtt / 2.0 + deviation + extra_buffer
+    (info.rtt / 2.0) / 1000.0 + deviation + extra_buffer
 }
 
 pub fn client_recv_interest(
@@ -226,15 +223,14 @@ pub fn client_recv_interest(
 
         let frame_buffer =
             client_frame_buffer(&*network_sim_info, &client, &message.input_deviation);
-        dbg!("frame_buffer: {:?}", &frame_buffer);
 
         match tick {
             Some(ref tick) => {
-                let diff = (tick.tick() as i64 - message.tick.tick() as i64) as f32;
+                let diff = (tick.tick() as i64 - message.tick.tick() as i64) as f32 * network_sim_info.step.as_secs_f32();
                 if diff > frame_buffer {
-                    network_sim_info.accel(0.01);
-                } else if diff < frame_buffer {
                     network_sim_info.decel(0.01);
+                } else if diff < frame_buffer {
+                    network_sim_info.accel(0.01);
                 }
             }
             None => {
