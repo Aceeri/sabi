@@ -1,6 +1,7 @@
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     fmt,
+    time::Duration,
 };
 
 use bevy::{ecs::entity::Entities, prelude::*, utils::HashMap};
@@ -12,7 +13,12 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{demands::ReplicateSizeEstimates, interest::InterestsToSend, ClientId, NetworkTick, input::{InputDeviation, ClientReceivedHistory}};
+use super::{
+    demands::ReplicateSizeEstimates,
+    input::{ClientReceivedHistory, InputDeviation, ReceivedHistory},
+    interest::InterestsToSend,
+    ClientId, NetworkTick,
+};
 
 pub const FRAME_BUFFER: u64 = 6;
 pub const NO_DILATION_BUFFER: f32 = 0.2;
@@ -179,15 +185,19 @@ impl UpdateMessages {
     }
 }
 
-pub fn client_frame_buffer(client: Res<RenetClient>) -> f32 {
+pub fn client_frame_buffer(client: &RenetClient, deviation: &InputDeviation) -> f32 {
     let info = client.network_info();
-    info.rtt / 2.0 + 2.5
+
+    // 2nd standard deviation so its ~2.1% chance we fall outside of it.
+    let deviation = deviation.deviation * 2.0;
+    let extra_buffer = 2.5;
+    info.rtt / 2.0 + deviation + info.rtt / 2.0 + extra_buffer
 }
 
 pub fn client_recv_interest(
+    tick: Option<Res<NetworkTick>>,
     mut commands: Commands,
     mut network_sim_info: ResMut<NetworkSimulationInfo>,
-    mut tick: ResMut<NetworkTick>,
     mut server_updates: ResMut<UpdateMessages>,
     mut server_entities: ResMut<ServerEntities>,
     mut client: ResMut<RenetClient>,
@@ -210,24 +220,21 @@ pub fn client_recv_interest(
 
         let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
 
-        let diff = (tick.tick() as i64 - message.tick.tick() as i64) as f32;
-        /*
-        if diff < 0 {
-            error!("falling behind server, hard stepping tick");
-            *tick = NetworkTick::new(message.tick.tick() + FRAME_BUFFER);
-        }
-    */
+        let frame_buffer = client_frame_buffer(&client, &message.input_deviation);
 
-
-        let info = client.network_info();
-        let frame_buffer = info.rtt / 2.0 + 2.5;
-        
-        if diff < frame_buffer + NO_DILATION_BUFFER || diff > frame_buffer + NO_DILATION_BUFFER {
-            network_sim_info.accel(0.0);
-        } else if diff > frame_buffer {
-            network_sim_info.accel(0.01);
-        } else if diff < frame_buffer {
-            network_sim_info.decel(0.01);
+        match tick {
+            Some(ref tick) => {
+                let diff = (tick.tick() as i64 - message.tick.tick() as i64) as f32;
+                if diff > frame_buffer {
+                    network_sim_info.accel(0.01);
+                } else if diff < frame_buffer {
+                    network_sim_info.decel(0.01);
+                }
+            }
+            None => {
+                commands.insert_resource(message.tick);
+                network_sim_info.accumulator = Duration::from_secs_f32(frame_buffer);
+            }
         }
 
         match rewind {

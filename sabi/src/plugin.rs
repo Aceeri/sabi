@@ -2,7 +2,7 @@ use std::{marker::PhantomData, time::Duration};
 
 use bevy::prelude::*;
 use bevy_renet::{
-    renet::{RenetClient, RenetError, RenetServer, RechannelError},
+    renet::{RechannelError, RenetClient, RenetError, RenetServer},
     RenetClientPlugin,
 };
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
@@ -308,6 +308,7 @@ pub fn handle_renet_error(
 
 pub fn handle_client_disconnect(
     mut commands: Commands,
+    tick: Option<Res<NetworkTick>>,
     client: Option<Res<RenetClient>>,
 ) {
     if let Some(client) = client {
@@ -315,6 +316,11 @@ pub fn handle_client_disconnect(
         if let Some(reason) = disconnected {
             error!("client disconnected: {}", reason);
             commands.remove_resource::<RenetClient>();
+            commands.remove_resource::<NetworkTick>();
+        }
+    } else {
+        if tick.is_some() {
+            commands.remove_resource::<NetworkTick>();
         }
     }
 }

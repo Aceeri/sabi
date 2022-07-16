@@ -127,14 +127,20 @@ pub struct Rewind(pub NetworkTick);
 impl Stage for NetworkSimulationStage {
     fn run(&mut self, world: &mut World) {
         if let Some(info) = world.get_resource::<NetworkSimulationInfo>() {
-            if self.info.accel != info.accel || self.info.accel_step != info.accel_step {
-                self.info.accel = info.accel;
-                self.info.accel_step = info.accel_step;
-            }
+            self.info = info.clone();
         }
 
-        let mut catchup_frames = 0;
-        let mut accumulated_frames = 0;
+        // Don't run unless we are connected and have received a message.
+        if world.get_resource::<NetworkTick>().is_none() {
+            return;
+        }
+
+        let increment_network_tick = |world: &mut World| {
+            world
+                .get_resource_mut::<NetworkTick>()
+                .expect("expected network tick")
+                .increment_tick();
+        };
 
         self.info.accumulator += {
             let time = world.get_resource::<Time>();
@@ -148,29 +154,14 @@ impl Stage for NetworkSimulationStage {
         while self.info.accumulator >= self.info.timestep() {
             self.info.accumulator -= self.info.timestep();
 
-            world
-                .get_resource_mut::<NetworkTick>()
-                .expect("expected network tick")
-                .increment_tick();
+            increment_network_tick(world);
 
-            /*
-                       info!(
-                           "running tick: {}",
-                           world
-                               .get_resource::<NetworkTick>()
-                               .expect("expected network tick")
-                               .tick()
-                       );
-            */
             world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
             self.schedule.run(world);
             world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
             self.meta.run(world);
-
-            accumulated_frames += 1;
         }
 
-        // TODO: handle the edge case where we don't have a snapshot
         let current_tick = world
             .get_resource::<NetworkTick>()
             .expect("expected network tick")
@@ -180,7 +171,6 @@ impl Stage for NetworkSimulationStage {
 
             if rewind_tick.tick() < current_tick.tick() {
                 world.insert_resource(rewind_tick);
-                //info!("rewinding to tick: {}", rewind_tick.tick());
 
                 world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
                 self.rewind.run(world);
@@ -188,46 +178,14 @@ impl Stage for NetworkSimulationStage {
                 self.update_history.run(world);
                 world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
 
-                // The updates/rewinds are at the end of the frame, so we shouldn't
-                // replay the immediate frame we rewound to.
-                /*
-                               world
-                                   .get_resource_mut::<NetworkTick>()
-                                   .expect("expected network tick")
-                                   .increment_tick();
-                info!(
-                    "advancing 1 tick ahead to tick: {}",
-                    world
-                        .get_resource::<NetworkTick>()
-                        .expect("expected network tick")
-                        .tick()
-                );
-                */
-
                 for tick in rewind_tick.tick()..current_tick.tick() {
-                    world
-                        .get_resource_mut::<NetworkTick>()
-                        .expect("expected network tick")
-                        .increment_tick();
-
-                    /*
-                                       info!(
-                                           "replaying tick {}, world tick: {}",
-                                           tick,
-                                           world
-                                               .get_resource::<NetworkTick>()
-                                               .expect("expected network tick")
-                                               .tick()
-                                       );
-                    */
+                    increment_network_tick(world);
 
                     world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
                     self.schedule.run(world);
                     self.input_history.run(world);
                     self.update_history.run(world);
                     world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
-
-                    catchup_frames += 1;
                 }
             }
 
@@ -239,6 +197,8 @@ impl Stage for NetworkSimulationStage {
 
             world.remove_resource::<Rewind>();
         }
+
+        world.insert_resource(self.info.clone());
     }
 }
 

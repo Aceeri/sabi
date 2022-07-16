@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
-use std::{collections::BTreeMap, time::Duration};
 use std::fmt::Debug;
+use std::{collections::BTreeMap, time::Duration};
 
 use bevy::{
     prelude::*,
@@ -22,7 +22,7 @@ use super::{
 /// How many inputs we should retain for replaying inputs.
 pub const INPUT_RETAIN_BUFFER: i64 = 32;
 /// How many inputs we should send to the server for future ticks.
-/// 
+///
 /// TODO: These should probably be determined by RTT and time dilation.
 /// We probably should send less than the frame buffer since by the time it
 /// gets to the server, most of these inputs will be late.
@@ -31,12 +31,12 @@ pub const INPUT_SEND_BUFFER: i64 = 6;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InputDeviation {
     pub mean: f32,
-    pub deviation: f32, 
+    pub deviation: f32,
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct ClientReceivedHistory {
-    clients: BTreeMap<ClientId, ReceivedHistory>
+    clients: BTreeMap<ClientId, ReceivedHistory>,
 }
 
 impl ClientReceivedHistory {
@@ -69,11 +69,11 @@ impl ReceivedHistory {
             let new_sample = previous.saturating_sub(sample);
             self.times.push_back(new_sample.as_secs_f32());
 
-            if self.times.len() > 64 {
+            if self.times.len() > 128 {
                 self.times.pop_front();
             }
         }
-        
+
         self.previous = Some(sample);
     }
 
@@ -82,7 +82,14 @@ impl ReceivedHistory {
         let sum: f32 = self.times.iter().sum();
         let mean = sum / samples;
 
-        let deviations_sum: f32 = self.times.iter().map(|sample| (sample - mean) * (sample - mean)).sum();
+        let deviations_sum: f32 = self
+            .times
+            .iter()
+            .map(|sample| {
+                let diff = sample - mean;
+                diff * diff
+            })
+            .sum();
         let variance = deviations_sum / samples;
         let standard_deviation = variance.sqrt();
 
