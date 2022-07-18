@@ -44,12 +44,70 @@ pub const PORT: u16 = 42069;
 
 pub type ClientId = u64;
 
-pub mod channel {
-    /// Channel IDs
-    pub const SERVER_MESSAGE: u8 = 0;
-    pub const CLIENT_INPUT: u8 = 1;
-    pub const COMPONENT: u8 = 2;
-    pub const BLOCK: u8 = 3;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ServerChannel {
+    Message,
+    EntityUpdate,
+}
+
+impl ServerChannel {
+    pub fn id(&self) -> u8 {
+        match *self {
+            ServerChannel::Message => 0,
+            ServerChannel::EntityUpdate => 1,
+        }
+    }
+
+    pub fn config(&self) -> ChannelConfig {
+        match *self {
+            ServerChannel::Message => {
+                ChannelConfig::Reliable(ReliableChannelConfig {
+                    channel_id: self.id(),
+                    ..Default::default()
+                })
+            },
+            ServerChannel::EntityUpdate =>{
+                ChannelConfig::Unreliable(UnreliableChannelConfig {
+                    channel_id: self.id(),
+                    ..Default::default()
+                })
+            }
+        }
+    }
+
+    pub fn configs() -> Vec<ChannelConfig> {
+        let channels = vec![ServerChannel::Message, ServerChannel::EntityUpdate];
+        channels.iter().map(|channel| channel.config()).collect()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ClientChannel {
+    Input,
+}
+
+impl ClientChannel {
+    pub fn id(&self) -> u8 {
+        match *self {
+            ClientChannel::Input => 0,
+        }
+    }
+
+    pub fn config(&self) -> ChannelConfig {
+        match *self {
+            ClientChannel::Input =>{
+                ChannelConfig::Unreliable(UnreliableChannelConfig {
+                    channel_id: self.id(),
+                    ..Default::default()
+                })
+            }
+        }
+    }
+
+    pub fn configs() -> Vec<ChannelConfig> {
+        let channels = vec![ClientChannel::Input];
+        channels.iter().map(|channel| channel.config()).collect()
+    }
 }
 
 /// If we see this component we have control over this entity.
@@ -138,30 +196,27 @@ pub fn protocol_id() -> u64 {
     s.finish()
 }
 
-pub fn renet_connection_config() -> RenetConnectionConfig {
-    let channels = vec![
-        ChannelConfig::Reliable(ReliableChannelConfig {
-            channel_id: channel::SERVER_MESSAGE,
-            ..Default::default()
-        }),
-        ChannelConfig::Unreliable(UnreliableChannelConfig {
-            channel_id: channel::CLIENT_INPUT,
-            ..Default::default()
-        }),
-        ChannelConfig::Unreliable(UnreliableChannelConfig {
-            channel_id: channel::COMPONENT,
-            ..Default::default()
-        }),
-        ChannelConfig::Block(BlockChannelConfig {
-            channel_id: channel::BLOCK,
-            ..Default::default()
-        }),
-    ];
-
+pub fn server_renet_config() -> RenetConnectionConfig {
     RenetConnectionConfig {
-        heartbeat_time: Duration::ZERO,
-        send_channels_config: channels.clone(),
-        receive_channels_config: channels.clone(),
+        send_channels_config: ServerChannel::configs(),
+        receive_channels_config: ClientChannel::configs(),
+        ..renet_connection_config()
+    }
+}
+
+pub fn client_renet_config() -> RenetConnectionConfig {
+    RenetConnectionConfig {
+        send_channels_config: ClientChannel::configs(),
+        receive_channels_config: ServerChannel::configs(),
+        ..renet_connection_config()
+    }
+}
+
+pub fn renet_connection_config() -> RenetConnectionConfig {
+    RenetConnectionConfig {
+        //heartbeat_time: Duration::ZERO,
+        send_channels_config: Vec::new(),
+        receive_channels_config: Vec::new(),
         ..Default::default()
     }
 }

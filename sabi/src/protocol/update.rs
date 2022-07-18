@@ -1,6 +1,6 @@
 use std::{
     collections::{btree_map::Entry, BTreeMap},
-    fmt,
+    fmt::{self, Debug},
     time::Duration,
 };
 
@@ -25,6 +25,10 @@ pub struct UpdateMessage {
     pub tick: NetworkTick,
     pub input_deviation: InputDeviation,
     pub entity_update: EntityUpdate,
+
+    // Clean up stragglers.
+    pub component_despawn: Vec<(ServerEntity, ReplicateId)>,
+    pub entity_despawn: Vec<ServerEntity>,
 }
 
 impl UpdateMessage {
@@ -121,7 +125,7 @@ impl EntityUpdate {
     }
 }
 
-#[derive(Default, Deref, DerefMut, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Deref, DerefMut, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ComponentsUpdate(pub BTreeMap<ReplicateId, Vec<u8>>);
 
 impl ComponentsUpdate {
@@ -131,6 +135,12 @@ impl ComponentsUpdate {
 
     pub fn apply(&mut self, other: Self) {
         self.0.extend(other.0);
+    }
+}
+
+impl Debug for ComponentsUpdate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("ComponentsUpdate").field(&self.0.keys().collect::<Vec<_>>()).finish()
     }
 }
 
@@ -205,15 +215,15 @@ pub fn client_recv_interest(
 ) {
     let mut rewind: Option<NetworkTick> = None;
 
-    while let Some(message) = client.receive_message(channel::COMPONENT) {
+    while let Some(message) = client.receive_message(ServerChannel::EntityUpdate.id()) {
+        /*
         let dict = crate::message_sample::DICTIONARIES
             .get("update")
             .expect("no update dictionary");
         let mut decompressor =
             zstd::bulk::Decompressor::with_dictionary(dict).expect("couldn't make decompressor");
-        /*
-        let mut decompressor = zstd::bulk::Decompressor::new().expect("couldn't make decompressor");
         */
+        let mut decompressor = zstd::bulk::Decompressor::new().expect("couldn't make decompressor");
 
         let decompressed = decompressor
             .decompress(&message.as_slice(), 10 * 1024)
@@ -344,29 +354,44 @@ pub fn server_send_interest(
     updates: Res<ClientEntityUpdates>,
     mut server: ResMut<RenetServer>,
 ) {
+    /*
     let dict = crate::message_sample::DICTIONARIES
         .get("update")
         .expect("no update dictionary");
     let mut compressor =
         zstd::bulk::Compressor::with_dictionary(0, dict).expect("couldn't make compressor");
-    /*
+ */
     let mut compressor = zstd::bulk::Compressor::new(0).expect("couldn't make compressor");
-    */
 
     for (client_id, update) in updates.iter() {
+        if !server.can_send_message(*client_id, ServerChannel::EntityUpdate.id()) {
+            continue;
+        }
+
+        if update.iter().count() == 0 {
+            continue;
+        }
+
         let input_deviation = history.deviation(*client_id);
 
+        //info!("update: {:?}", update.clone());
         let message = UpdateMessage {
             tick: *tick,
             input_deviation: input_deviation,
             entity_update: update.clone(),
+
+            component_despawn: Vec::new(),
+            entity_despawn: Vec::new(),
         };
         let serialized = bincode::serialize(&message).unwrap();
+
+        //info!("len: {:?}", serialized.len());
         //crate::message_sample::try_add_sample("update", &serialized);
         let compressed = compressor
             .compress(&serialized.as_slice())
             .expect("couldn't compress message");
+        //info!("compressed len: {:?}", compressed.len());
 
-        server.send_message(*client_id, channel::COMPONENT, compressed)
+        server.send_message(*client_id, ServerChannel::EntityUpdate.id(), compressed)
     }
 }

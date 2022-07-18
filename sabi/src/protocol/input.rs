@@ -22,7 +22,7 @@ use super::{
 /// How many inputs we should retain for replaying inputs.
 pub const INPUT_RETAIN_BUFFER: i64 = 32;
 /// How many inputs we should send to the server for future ticks.
-pub const INPUT_SEND_BUFFER: i64 = 3;
+pub const INPUT_SEND_BUFFER: i64 = 6;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct InputDeviation {
@@ -210,7 +210,7 @@ pub fn server_recv_input<I>(
     queued_inputs.clean_old(*tick);
 
     for client_id in server.clients_id().into_iter() {
-        while let Some(message) = server.receive_message(client_id, channel::CLIENT_INPUT) {
+        while let Some(message) = server.receive_message(client_id, ClientChannel::Input.id()) {
             let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
             let input_message: ClientInputMessage<I> = bincode::deserialize(&decompressed).unwrap();
 
@@ -236,7 +236,7 @@ pub fn server_apply_input<I>(
                 commands.entity(*entity).insert(input.clone());
             }
         } else {
-            //error!("no input for player {} on tick {}", client, tick.tick());
+            error!("no input for player {} on tick {}", client, tick.tick());
         }
     }
 }
@@ -256,6 +256,10 @@ pub fn client_send_input<I>(
         + for<'de> Deserialize<'de>
         + std::fmt::Debug,
 {
+    if !client.can_send_message(ClientChannel::Input.id()) {
+        return;
+    }
+
     let mut send_buffer = input_buffer.clone();
     send_buffer.retain(INPUT_SEND_BUFFER);
 
@@ -269,7 +273,7 @@ pub fn client_send_input<I>(
     //crate::message_sample::try_add_sample("input", &serialized);
     let compressed = zstd::bulk::compress(&serialized.as_slice(), 0).unwrap();
 
-    client.send_message(channel::CLIENT_INPUT, compressed);
+    client.send_message(ClientChannel::Input.id(), compressed);
 }
 
 pub fn client_update_input_buffer<I>(

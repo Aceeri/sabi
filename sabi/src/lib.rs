@@ -21,7 +21,7 @@ pub struct Server;
 
 pub mod prelude {
     pub use crate::protocol::{
-        channel, lobby::Lobby, tick_hz, Owned, ServerEntities, ServerEntity, ServerMessage,
+        ServerChannel, ClientChannel, lobby::Lobby, tick_hz, Owned, ServerEntities, ServerEntity, ServerMessage,
     };
 
     pub use crate::error::SabiError;

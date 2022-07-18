@@ -184,7 +184,8 @@ impl Stage for NetworkSimulationStage {
                     self.update_history.run(world);
                     world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
 
-                    for tick in rewind_tick.tick()..current_tick.tick() {
+                    for tick in (rewind_tick.tick() + 1)..=current_tick.tick() {
+                        //world.insert_resource(NetworkTick::new(tick));
                         increment_network_tick(world);
 
                         world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);

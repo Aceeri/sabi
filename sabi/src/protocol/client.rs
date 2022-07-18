@@ -18,7 +18,7 @@ pub fn new_renet_client<S: AsRef<str>>(ip: S, port: u16) -> Result<RenetClient, 
     let protocol_id = protocol_id();
     info!("protocol id: {:?}", protocol_id);
 
-    let connection_config = renet_connection_config();
+    let connection_config = client_renet_config();
     let socket = UdpSocket::bind((localhost_ip(), 0))?;
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     let client_id = current_time.as_millis() as u64;

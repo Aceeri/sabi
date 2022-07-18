@@ -76,7 +76,7 @@ pub fn new_renet_server<S: AsRef<str>>(
     let socket = UdpSocket::bind(local_addr)?;
     socket.set_nonblocking(true)?;
 
-    let connection_config = crate::protocol::renet_connection_config();
+    let connection_config = crate::protocol::server_renet_config();
     let server_config = ServerConfig {
         max_clients: 10,
         protocol_id: protocol_id,
