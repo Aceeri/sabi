@@ -1,7 +1,4 @@
-use bevy::{
-    ecs::query::{FilterFetch, WorldQuery},
-    prelude::*,
-};
+use bevy::prelude::*;
 
 use std::marker::PhantomData;
 

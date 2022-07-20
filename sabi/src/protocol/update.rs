@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use bevy::{ecs::entity::Entities, prelude::*, utils::HashMap};
+use bevy::{ecs::entity::Entities, prelude::*};
 use bevy_renet::renet::{RenetClient, RenetServer};
 
 use crate::{
@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     demands::ReplicateSizeEstimates,
-    input::{ClientReceivedHistory, InputDeviation, ReceivedHistory},
+    input::{ClientReceivedHistory, InputDeviation},
     interest::InterestsToSend,
     ClientId, NetworkTick,
 };

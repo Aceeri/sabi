@@ -2,7 +2,7 @@ use std::{marker::PhantomData, time::Duration};
 
 use bevy::prelude::*;
 use bevy_renet::{
-    renet::{RechannelError, RenetClient, RenetError, RenetServer},
+    renet::{RenetClient, RenetError, RenetServer},
     RenetClientPlugin,
 };
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};

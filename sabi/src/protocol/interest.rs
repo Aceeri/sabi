@@ -120,7 +120,7 @@ impl ClientUnackedInterests {
     }
 
     pub fn ack(&mut self, client_id: &ClientId, tick: &NetworkTick) {
-        if let Some(mut sent) = self.clients.get_mut(client_id) {
+        if let Some(sent) = self.clients.get_mut(client_id) {
             sent.ack(tick);
         }
     }

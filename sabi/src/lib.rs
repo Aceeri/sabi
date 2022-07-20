@@ -7,10 +7,10 @@ extern crate sabi_derive;
 pub use sabi_derive::*;
 
 pub mod error;
+pub mod message_sample;
 pub mod plugin;
 pub mod protocol;
 pub mod replicate;
-pub mod message_sample;
 pub mod stage;
 
 #[derive(Debug, Clone, Copy)]
@@ -21,7 +21,8 @@ pub struct Server;
 
 pub mod prelude {
     pub use crate::protocol::{
-        ServerChannel, ClientChannel, lobby::Lobby, tick_hz, Owned, ServerEntities, ServerEntity, ServerMessage,
+        lobby::Lobby, tick_hz, ClientChannel, Owned, ServerChannel, ServerEntities, ServerEntity,
+        ServerMessage,
     };
 
     pub use crate::error::SabiError;

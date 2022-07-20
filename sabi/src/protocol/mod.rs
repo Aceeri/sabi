@@ -5,14 +5,13 @@ use bevy::{
     utils::{Entry, HashMap},
 };
 use bevy_renet::renet::{
-    BlockChannelConfig, ChannelConfig, ReliableChannelConfig, RenetConnectionConfig,
-    UnreliableChannelConfig, NETCODE_KEY_BYTES,
+    ChannelConfig, ReliableChannelConfig, RenetConnectionConfig, UnreliableChannelConfig,
+    NETCODE_KEY_BYTES,
 };
 
 use std::{
     hash::{Hash, Hasher},
     net::UdpSocket,
-    time::Duration,
 };
 
 use serde::{Deserialize, Serialize};
@@ -21,10 +20,10 @@ use crate::prelude::*;
 
 pub mod ack;
 pub mod client;
+pub mod demands;
 pub mod input;
 pub mod interest;
 pub mod lobby;
-pub mod demands;
 pub mod resim;
 pub mod server;
 pub mod tick;
@@ -60,18 +59,14 @@ impl ServerChannel {
 
     pub fn config(&self) -> ChannelConfig {
         match *self {
-            ServerChannel::Message => {
-                ChannelConfig::Reliable(ReliableChannelConfig {
-                    channel_id: self.id(),
-                    ..Default::default()
-                })
-            },
-            ServerChannel::EntityUpdate =>{
-                ChannelConfig::Unreliable(UnreliableChannelConfig {
-                    channel_id: self.id(),
-                    ..Default::default()
-                })
-            }
+            ServerChannel::Message => ChannelConfig::Reliable(ReliableChannelConfig {
+                channel_id: self.id(),
+                ..Default::default()
+            }),
+            ServerChannel::EntityUpdate => ChannelConfig::Unreliable(UnreliableChannelConfig {
+                channel_id: self.id(),
+                ..Default::default()
+            }),
         }
     }
 
@@ -95,12 +90,10 @@ impl ClientChannel {
 
     pub fn config(&self) -> ChannelConfig {
         match *self {
-            ClientChannel::Input =>{
-                ChannelConfig::Unreliable(UnreliableChannelConfig {
-                    channel_id: self.id(),
-                    ..Default::default()
-                })
-            }
+            ClientChannel::Input => ChannelConfig::Unreliable(UnreliableChannelConfig {
+                channel_id: self.id(),
+                ..Default::default()
+            }),
         }
     }
 
