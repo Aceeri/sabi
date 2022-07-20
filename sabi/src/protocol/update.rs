@@ -140,7 +140,9 @@ impl ComponentsUpdate {
 
 impl Debug for ComponentsUpdate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("ComponentsUpdate").field(&self.0.keys().collect::<Vec<_>>()).finish()
+        f.debug_tuple("ComponentsUpdate")
+            .field(&self.0.keys().collect::<Vec<_>>())
+            .finish()
     }
 }
 
@@ -236,7 +238,8 @@ pub fn client_recv_interest(
 
         match tick {
             Some(ref tick) => {
-                let diff = (tick.tick() as i64 - message.tick.tick() as i64) as f32 * network_sim_info.step.as_secs_f32();
+                let diff = (tick.tick() as i64 - message.tick.tick() as i64) as f32
+                    * network_sim_info.step.as_secs_f32();
                 if diff > frame_buffer {
                     network_sim_info.decel(0.01);
                 } else if diff < frame_buffer {
@@ -303,6 +306,7 @@ pub fn client_update<C>(
                         component.apply_def(def);
                     }
                 } else {
+                    info!("inserting new component");
                     let component = C::from_def(def);
                     commands.entity(entity).insert(component);
                 }
@@ -355,12 +359,12 @@ pub fn server_send_interest(
     mut server: ResMut<RenetServer>,
 ) {
     /*
-    let dict = crate::message_sample::DICTIONARIES
-        .get("update")
-        .expect("no update dictionary");
-    let mut compressor =
-        zstd::bulk::Compressor::with_dictionary(0, dict).expect("couldn't make compressor");
- */
+       let dict = crate::message_sample::DICTIONARIES
+           .get("update")
+           .expect("no update dictionary");
+       let mut compressor =
+           zstd::bulk::Compressor::with_dictionary(0, dict).expect("couldn't make compressor");
+    */
     let mut compressor = zstd::bulk::Compressor::new(0).expect("couldn't make compressor");
 
     for (client_id, update) in updates.iter() {

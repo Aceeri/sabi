@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_renet::renet::{ConnectToken, RenetClient};
+use bevy_renet::renet::{ClientAuthentication, ConnectToken, RenetClient};
 
 use std::error::Error;
 use std::net::{ToSocketAddrs, UdpSocket};
@@ -41,8 +41,10 @@ pub fn new_renet_client<S: AsRef<str>>(ip: S, port: u16) -> Result<RenetClient, 
         current_time,
         socket,
         client_id,
-        token,
         connection_config,
+        ClientAuthentication::Secure {
+            connect_token: token,
+        },
     )?)
 }
 

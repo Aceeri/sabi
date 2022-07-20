@@ -105,6 +105,8 @@ pub struct NetworkSimulationStage {
     pub meta: SystemStage,
     /// Game simulation that will be rewound.
     pub schedule: Schedule,
+    /// How many times to apply buffers.
+    pub apply_buffers: u8,
 }
 
 impl NetworkSimulationStage {
@@ -117,6 +119,7 @@ impl NetworkSimulationStage {
             input_history: SystemStage::parallel(),
             meta: SystemStage::parallel(),
             schedule: Schedule::default(),
+            apply_buffers: u8::MAX,
         }
     }
 }
@@ -168,7 +171,6 @@ impl Stage for NetworkSimulationStage {
             if let Some(info) = world.get_resource::<NetworkSimulationInfo>() {
                 self.info = info.clone();
             }
-
         }
 
         if let Some(current_tick) = world.get_resource::<NetworkTick>().cloned() {
@@ -180,12 +182,9 @@ impl Stage for NetworkSimulationStage {
 
                     world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
                     self.rewind.run(world);
-                    self.input_history.run(world);
-                    self.update_history.run(world);
                     world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
 
                     for tick in (rewind_tick.tick() + 1)..=current_tick.tick() {
-                        //world.insert_resource(NetworkTick::new(tick));
                         increment_network_tick(world);
 
                         world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);

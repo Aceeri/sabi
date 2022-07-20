@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_renet::renet::{RenetServer, ServerConfig};
+use bevy_renet::renet::{RenetServer, ServerAuthentication, ServerConfig};
 
 use std::{
     error::Error,
@@ -81,7 +81,9 @@ pub fn new_renet_server<S: AsRef<str>>(
         max_clients: 10,
         protocol_id: protocol_id,
         public_addr: server_addr,
-        private_key: *PRIVATE_KEY,
+        authentication: ServerAuthentication::Secure {
+            private_key: *PRIVATE_KEY,
+        },
     };
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?;
     Ok(RenetServer::new(
