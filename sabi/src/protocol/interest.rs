@@ -73,7 +73,7 @@ pub fn baseload_components<C>(
 
 pub fn clear_baseloads(mut baseload: ResMut<Baseload>) {
     for (_client_id, should_load) in baseload.iter_mut() {
-        *should_load = false;
+        //*should_load = false;
     }
 }
 
