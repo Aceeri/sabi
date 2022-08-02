@@ -60,7 +60,7 @@ pub fn store_snapshot<C>(
         snapshot.insert(entity, component.clone());
     }
 
-    snapshots.push(*tick, snapshot)
+    snapshots.push(*tick, snapshot);
 }
 
 pub fn rewind<C>(
@@ -78,11 +78,9 @@ pub fn rewind<C>(
             }
         }
     } else {
-        /*
-               error!(
-                   "no snapshot for component: {:?}",
-                   std::any::type_name::<C>()
-               );
-        */
+        error!(
+            "no snapshot for component: {:?}",
+            std::any::type_name::<C>()
+        );
     }
 }

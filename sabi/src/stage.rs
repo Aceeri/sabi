@@ -117,7 +117,7 @@ impl NetworkSimulationStage {
             rewind: SystemStage::parallel(),
             update_history: SystemStage::parallel(),
             input_history: SystemStage::parallel(),
-            meta: SystemStage::parallel(),
+            meta: SystemStage::single_threaded(),
             schedule: Schedule::default(),
             apply_buffers: u8::MAX,
         }
@@ -168,6 +168,7 @@ impl Stage for NetworkSimulationStage {
             }
 
             self.meta.run(world);
+
             if let Some(info) = world.get_resource::<NetworkSimulationInfo>() {
                 self.info = info.clone();
             }
@@ -177,22 +178,35 @@ impl Stage for NetworkSimulationStage {
             if let Some(rewind) = world.get_resource::<Rewind>() {
                 let rewind_tick = rewind.0.clone();
 
-                if rewind_tick.tick() < current_tick.tick() {
-                    world.insert_resource(rewind_tick);
-
+                if rewind_tick.tick() <= current_tick.tick() {
                     world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
-                    self.rewind.run(world);
-                    world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
 
-                    for _tick in (rewind_tick.tick() + 1)..=current_tick.tick() {
+                    world.insert_resource(rewind_tick);
+                    info!(
+                        "--- rewinding to {} from {}",
+                        rewind_tick.tick(),
+                        current_tick.tick()
+                    );
+
+                    self.rewind.run(world);
+
+                    for tick in (rewind_tick.tick() + 1)..=current_tick.tick() {
                         increment_network_tick(world);
 
-                        world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
+                        let replayed_tick = world
+                            .get_resource::<NetworkTick>()
+                            .expect("expected network tick")
+                            .clone();
+                        assert_eq!(replayed_tick.tick(), tick);
+
+                        info!("replaying {}", tick);
+
                         self.schedule.run(world);
                         self.input_history.run(world);
                         self.update_history.run(world);
-                        world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
                     }
+
+                    world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
                 }
 
                 let resimmed_current_tick = world

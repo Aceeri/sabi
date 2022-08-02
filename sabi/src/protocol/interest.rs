@@ -239,7 +239,7 @@ pub fn queue_interests(
         }
 
         for interest in unsent.into_iter().rev() {
-            info!("unsent, repushing: {:?}", interest);
+            //info!("unsent, repushing: {:?}", interest);
             queue.push_front(interest);
         }
     }

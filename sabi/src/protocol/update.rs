@@ -199,12 +199,15 @@ pub fn client_frame_buffer(
     client: &RenetClient,
     deviation: &InputDeviation,
 ) -> f32 {
-    let info = client.network_info();
+    /*
+       let info = client.network_info();
 
-    // 2nd standard deviation so its ~2.1% chance we fall outside of it.
-    let deviation = deviation.deviation * 2.0;
-    let extra_buffer = sim_info.step.as_secs_f32() * 3.0;
-    (info.rtt / 2.0) / 1000.0 + deviation + extra_buffer
+       // 2nd standard deviation so its ~2.1% chance we fall outside of it.
+       let deviation = deviation.deviation * 2.0;
+       let extra_buffer = sim_info.step.as_secs_f32() * 3.0;
+       (info.rtt / 2.0) / 1000.0 + deviation + extra_buffer
+    */
+    sim_info.step.as_secs_f32() * 6.0
 }
 
 pub fn client_recv_interest(
@@ -228,7 +231,7 @@ pub fn client_recv_interest(
         let mut decompressor = zstd::bulk::Decompressor::new().expect("couldn't make decompressor");
 
         let decompressed = decompressor
-            .decompress(&message.as_slice(), 10 * 1024)
+            .decompress(&message.as_slice(), 5 * 1024)
             .expect("could not decompress message");
 
         let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
@@ -249,9 +252,8 @@ pub fn client_recv_interest(
             None => {
                 dbg!("first tick", &message.tick);
                 commands.insert_resource(message.tick);
-                let default_buffer = network_sim_info.step.as_secs_f32() * 5.0;
-                network_sim_info.accumulator =
-                    Duration::from_secs_f32(frame_buffer.max(default_buffer));
+                //let default_buffer = network_sim_info.step.as_secs_f32() * 5.0;
+                network_sim_info.accumulator = Duration::from_secs_f32(frame_buffer);
             }
         }
 
@@ -284,6 +286,8 @@ pub fn client_apply_server_update(
 ) {
     if let Some(update) = server_updates.get(&*tick) {
         update_events.send_batch(update.entity_update.updates.clone().into_iter());
+    } else {
+        info!("no server update for tick: {}", tick.tick())
     }
 }
 
@@ -303,10 +307,11 @@ pub fn client_update<C>(
                 if let Ok(mut component) = query.get_mut(entity) {
                     let current_def = component.clone().into_def();
                     if current_def != def {
+                        //info!("updating component");
                         component.apply_def(def);
                     }
                 } else {
-                    info!("inserting new component");
+                    //info!("inserting new component");
                     let component = C::from_def(def);
                     commands.entity(entity).insert(component);
                 }

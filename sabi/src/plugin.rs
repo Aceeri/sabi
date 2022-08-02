@@ -104,6 +104,16 @@ where
         + std::fmt::Debug,
 {
     fn build(&self, app: &mut App) {
+        match (
+            app.world.contains_resource::<crate::Client>(),
+            app.world.contains_resource::<crate::Server>(),
+        ) {
+            (true, false) => info!("initiating as client"),
+            (false, true) => info!("initiating as server"),
+            (true, true) => info!("initiating as client and server"),
+            (false, false) => panic!("requires `sabi::Client` or `sabi::Server` to start"),
+        }
+
         app.register_type::<ServerEntity>();
 
         app.add_event::<(ServerEntity, ComponentsUpdate)>();
@@ -261,7 +271,6 @@ where
                 .run_if(client_connected)
                 .label("client_recv_interest"),
         );
-
         app.add_update_history_network_system(
             crate::protocol::update::client_apply_server_update
                 .run_if_resource_exists::<RenetClient>()
@@ -274,7 +283,6 @@ where
                 .run_if_resource_exists::<NetworkTick>()
                 .label("client_update_input_buffer"),
         );
-
         app.add_meta_network_system(
             crate::protocol::input::client_send_input::<I>
                 .run_if_resource_exists::<RenetClient>()

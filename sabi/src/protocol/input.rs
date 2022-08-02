@@ -22,7 +22,7 @@ use super::{
 /// How many inputs we should retain for replaying inputs.
 pub const INPUT_RETAIN_BUFFER: i64 = 32;
 /// How many inputs we should send to the server for future ticks.
-pub const INPUT_SEND_BUFFER: i64 = 6;
+pub const INPUT_SEND_BUFFER: i64 = 12;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct InputDeviation {
@@ -291,6 +291,7 @@ pub fn client_update_input_buffer<I>(
         + for<'de> Deserialize<'de>
         + Debug,
 {
+    info!("recording {}: {:?}", tick.tick(), player_input.clone());
     input_buffer.push(*tick, player_input.clone());
 }
 
@@ -310,9 +311,9 @@ pub fn client_apply_input_buffer<I>(
         + Debug,
 {
     if let Some(input) = input_buffer.get(&*tick) {
-        //info!("input: {:?}", input);
+        info!("{}: {:?}", tick.tick(), input);
         *player_input = input.clone();
     } else {
-        error!("no input for tick {}", tick.tick());
+        error!("no input: {}", tick.tick());
     }
 }
