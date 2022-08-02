@@ -287,7 +287,7 @@ pub fn client_apply_server_update(
     if let Some(update) = server_updates.get(&*tick) {
         update_events.send_batch(update.entity_update.updates.clone().into_iter());
     } else {
-        info!("no server update for tick: {}", tick.tick())
+        //info!("no server update for tick: {}", tick.tick())
     }
 }
 
