@@ -166,7 +166,6 @@ where
         //app.add_apply_update_network_system(bevy::transform::transform_propagate_system);
 
         app.add_plugin(ReplicatePlugin::<Transform>::default());
-        app.add_plugin(ReplicatePlugin::<GlobalTransform>::default());
         app.add_plugin(ReplicatePlugin::<Name>::default());
 
         app.insert_resource(PreviousRenetError(None));

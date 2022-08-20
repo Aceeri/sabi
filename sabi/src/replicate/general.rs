@@ -14,22 +14,6 @@ pub struct TransformDef {
     pub scale: Vec3,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
-#[serde(remote = "GlobalTransform")]
-#[replicate(remote = "GlobalTransform")]
-#[replicate(crate = "crate")]
-pub struct GlobalTransformDef {
-    pub translation: Vec3,
-    pub rotation: Quat,
-    pub scale: Vec3,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
-#[serde(remote = "Parent")]
-#[replicate(remote = "Parent")]
-#[replicate(crate = "crate")]
-pub struct ParentDef(pub Entity);
-
 impl Replicate for Name {
     type Def = String;
     fn into_def(self) -> Self::Def {
