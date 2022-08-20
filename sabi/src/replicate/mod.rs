@@ -8,7 +8,8 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 pub mod general;
-pub mod physics;
+pub mod physics2d;
+pub mod physics3d;
 
 pub fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where

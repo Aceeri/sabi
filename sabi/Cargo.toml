@@ -16,6 +16,7 @@ path = "src/lib.rs"
 [dependencies]
 sabi_derive = {version = "0.3", path = "../sabi_derive"}
 
+bevy_rapier2d = {version = "0.16", features = ["serde-serialize"]}
 bevy_rapier3d = {version = "0.16", features = ["serde-serialize"]}
 bevy_renet = "0.0.5"
 bincode = "1.3"

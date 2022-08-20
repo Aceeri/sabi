@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{plugin::ReplicatePlugin, protocol::demands::RequireDependency, Replicate};
 
-pub struct ReplicatePhysicsPlugin;
-impl Plugin for ReplicatePhysicsPlugin {
+pub struct ReplicatePhysics3dPlugin;
+impl Plugin for ReplicatePhysics3dPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(ReplicatePlugin::<RigidBody>::default());
         app.add_plugin(ReplicatePlugin::<Velocity>::default());

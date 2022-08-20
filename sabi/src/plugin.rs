@@ -13,7 +13,8 @@ use crate::{
         resim::SnapshotBuffer,
         update::{server_send_interest, EntityUpdate},
     },
-    replicate::physics::ReplicatePhysicsPlugin,
+    replicate::physics2d::ReplicatePhysics2dPlugin,
+    replicate::physics3d::ReplicatePhysics3dPlugin,
     stage::{
         NetworkCoreStage, NetworkSimulationAppExt, NetworkSimulationInfo, NetworkSimulationStage,
         NetworkStage,
@@ -152,7 +153,8 @@ where
 
         app.insert_resource(Lobby::default());
 
-        app.add_plugin(ReplicatePhysicsPlugin);
+        app.add_plugin(ReplicatePhysics3dPlugin);
+        app.add_plugin(ReplicatePhysics2dPlugin);
         if app.world.contains_resource::<crate::Server>() {
             app.add_plugin(SabiServerPlugin::<I>::default());
         }
