@@ -4,6 +4,8 @@ use std::marker::PhantomData;
 
 use crate::protocol::*;
 
+pub const DEFAULT_ESTIMATE: usize = 128;
+
 #[derive(Debug, Clone)]
 pub struct ReplicateSizeEstimates(HashMap<ReplicateId, usize>);
 
@@ -17,7 +19,7 @@ impl ReplicateSizeEstimates {
     }
 
     pub fn get(&self, id: &ReplicateId) -> usize {
-        self.0.get(id).cloned().unwrap_or(0)
+        self.0.get(id).cloned().unwrap_or(DEFAULT_ESTIMATE)
     }
 }
 

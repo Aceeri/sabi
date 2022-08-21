@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 pub mod general;
-pub mod physics2d;
+//pub mod physics2d;
 pub mod physics3d;
 
 pub fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
@@ -59,6 +59,13 @@ impl ReplicateTypes {
     pub fn next_id(&self) -> u16 {
         self.0.iter().map(|(_name, ty)| ty).max().unwrap_or(&0) + 1
     }
+
+    pub fn from_id(&self, id: u16) -> Option<String> {
+        self.0
+            .iter()
+            .find(|(_, replicate_id)| **replicate_id == id)
+            .map(|(name, _)| name.clone())
+    }
 }
 
 lazy_static::lazy_static! {
@@ -90,6 +97,13 @@ pub fn write_types_file() {
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ReplicateId(pub u16);
+
+impl ReplicateId {
+    pub fn name(&self) -> String {
+        let types = TYPES.read().expect("read TYPES so we can write");
+        types.replicate.from_id(self.0).unwrap()
+    }
+}
 
 pub trait Replicate
 where

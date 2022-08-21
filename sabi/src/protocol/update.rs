@@ -79,17 +79,21 @@ pub struct EntityUpdate {
 
 impl fmt::Debug for EntityUpdate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut counts: BTreeMap<ReplicateId, u16> = Default::default();
+        let mut counts: BTreeMap<ReplicateId, (String, u16)> = Default::default();
 
         for (_, component_update) in self.iter() {
             for (replicate_id, _) in component_update.iter() {
-                *counts.entry(*replicate_id).or_insert(0) += 1;
+                let count = counts
+                    .entry(*replicate_id)
+                    .or_insert_with(|| (replicate_id.name(), 0));
+
+                count.1 += 1;
             }
         }
 
         f.debug_struct("EntityUpdate")
             .field("entities", &self.updates.len())
-            .field("components", &counts)
+            .field("components", &counts.values())
             .finish()
     }
 }
@@ -383,7 +387,9 @@ pub fn server_send_interest(
 
         let input_deviation = history.deviation(*client_id);
 
-        //info!("update: {:?}", update.clone());
+        info!("update: {:?}", &update);
+
+        // check the size of each individual component to find outliers.
         let message = UpdateMessage {
             tick: *tick,
             input_deviation: input_deviation,
@@ -394,12 +400,12 @@ pub fn server_send_interest(
         };
         let serialized = bincode::serialize(&message).unwrap();
 
-        //info!("len: {:?}", serialized.len());
+        info!("len: {:?}", serialized.len());
         //crate::message_sample::try_add_sample("update", &serialized);
         let compressed = compressor
             .compress(&serialized.as_slice())
             .expect("couldn't compress message");
-        //info!("compressed len: {:?}", compressed.len());
+        info!("compressed len: {:?}", compressed.len());
 
         server.send_message(*client_id, ServerChannel::EntityUpdate.id(), compressed)
     }
