@@ -132,15 +132,17 @@ impl Stage for NetworkSimulationStage {
             self.info = info.clone();
         }
 
-        if world.contains_resource::<crate::Server>() && !world.contains_resource::<NetworkTick>() {
+        let should_have_tick =
+            world.contains_resource::<crate::Server>() || world.contains_resource::<crate::Local>();
+        if should_have_tick && !world.contains_resource::<NetworkTick>() {
             world.insert_resource(NetworkTick::default());
         }
 
         self.info.accumulator += {
-            let time = world.get_resource::<Time>();
-            if let Some(time) = time {
+            if let Some(time) = world.get_resource::<Time>() {
                 time.delta()
             } else {
+                warn!("World does not have a `Time`");
                 return;
             }
         };
@@ -181,13 +183,14 @@ impl Stage for NetworkSimulationStage {
                     world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
 
                     world.insert_resource(rewind_tick);
-                    info!("");
-                    info!(
-                        "rewinding to {} from {}",
-                        rewind_tick.tick(),
-                        current_tick.tick()
-                    );
-
+                    /*
+                                       info!("");
+                                       info!(
+                                           "rewinding to {} from {}",
+                                           rewind_tick.tick(),
+                                           current_tick.tick()
+                                       );
+                    */
                     self.rewind.run(world);
                     self.input_history.run(world);
                     self.update_history.run(world);
@@ -201,7 +204,7 @@ impl Stage for NetworkSimulationStage {
                             .clone();
                         assert_eq!(replayed_tick.tick(), tick);
 
-                        info!("replaying {}", tick);
+                        //info!("replaying {}", tick);
 
                         self.schedule.run(world);
                         self.input_history.run(world);

@@ -4,7 +4,7 @@ use bevy::{ecs::entity::Entities, prelude::*};
 
 use super::{NetworkTick, Replicate};
 
-pub const SNAPSHOT_RETAIN_BUFFER: i64 = 16;
+pub const SNAPSHOT_RETAIN_BUFFER: i64 = 64;
 
 #[derive(Deref, DerefMut, Debug)]
 pub struct ComponentSnapshot<C>(BTreeMap<Entity, C>);

@@ -13,11 +13,14 @@ pub mod protocol;
 pub mod replicate;
 pub mod stage;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Client;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Server;
+
+#[derive(Default, Debug, Clone, Copy)]
+pub struct Local;
 
 pub mod prelude {
     pub use crate::protocol::{

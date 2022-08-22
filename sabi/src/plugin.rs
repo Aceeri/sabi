@@ -105,13 +105,19 @@ where
         + std::fmt::Debug,
 {
     fn build(&self, app: &mut App) {
+        if app.world.contains_resource::<crate::Local>() {
+            info!("initiating as local");
+            app.world.remove_resource::<crate::Server>();
+            app.world.init_resource::<crate::Client>();
+        }
+
         match (
             app.world.contains_resource::<crate::Client>(),
             app.world.contains_resource::<crate::Server>(),
         ) {
             (true, false) => info!("initiating as client"),
             (false, true) => info!("initiating as server"),
-            (true, true) => info!("initiating as client and server"),
+            (true, true) => panic!("initiating as client and server"),
             (false, false) => panic!("requires `sabi::Client` or `sabi::Server` to start"),
         }
 
@@ -325,10 +331,15 @@ pub fn handle_renet_error(
 
 pub fn handle_client_disconnect(
     mut commands: Commands,
+    local: Option<Res<crate::Local>>,
     tick: Option<Res<NetworkTick>>,
     client: Option<Res<RenetClient>>,
     server: Option<Res<RenetServer>>,
 ) {
+    if local.is_some() {
+        return;
+    }
+
     if let Some(client) = client {
         let disconnected = client.disconnected();
         if let Some(reason) = disconnected {

@@ -242,7 +242,7 @@ pub fn server_apply_input<I>(
                 commands.entity(*entity).insert(input.clone());
             }
         } else {
-            error!("no input for player {} on tick {}", client, tick.tick());
+            //error!("no input for player {} on tick {}", client, tick.tick());
         }
     }
 }
@@ -317,9 +317,9 @@ pub fn client_apply_input_buffer<I>(
         + Debug,
 {
     if let Some(input) = input_buffer.get(&*tick) {
-        info!("{}: {:?}", tick.tick(), input);
+        //info!("{}: {:?}", tick.tick(), input);
         *player_input = input.clone();
     } else {
-        error!("no input: {}", tick.tick());
+        //error!("no input: {}", tick.tick());
     }
 }

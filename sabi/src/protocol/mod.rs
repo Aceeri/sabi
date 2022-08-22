@@ -114,7 +114,7 @@ pub struct Owned;
 /// overall gamestate and assigning what the clients should predict.
 #[derive(Debug, Serialize, Deserialize, Component)]
 pub enum ServerMessage {
-    SetPlayer { id: ClientId, entity: ServerEntity },
+    SetPlayer { id: ClientId },
     AssignOwnership { entity: ServerEntity },
     PlayerConnected { id: ClientId, entity: ServerEntity },
     PlayerDisconnected { id: ClientId },

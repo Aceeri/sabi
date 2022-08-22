@@ -206,7 +206,7 @@ pub fn queue_interests(
         let mut unsent: SmallVec<[Interest; 3]> = SmallVec::new();
 
         while let Some((entity, replicate_id)) = queue.pop_front() {
-            //info!("attempting: ({:?}, {:?})", entity, replicate_id);
+            //info!("attempting: ({:?}, {:?})", entity, replicate_id.name());
             let mut grouped_ids: SmallVec<[&ReplicateId; 3]> = SmallVec::new();
             grouped_ids.push(&replicate_id);
             if let Some(group) = demands.require.get(&replicate_id) {
@@ -236,7 +236,7 @@ pub fn queue_interests(
             }
 
             used += estimate;
-            //break; // we can test 1 component at a time by doing this.
+            break; // we can test 1 component at a time by doing this.
         }
 
         for interest in unsent.into_iter().rev() {

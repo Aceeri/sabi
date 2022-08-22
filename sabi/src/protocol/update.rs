@@ -346,6 +346,14 @@ pub fn server_queue_interest<C>(
                     let component_def = component.clone().into_def();
                     let component_data = bincode::serialize(&component_def).unwrap();
 
+                    if component_data.len() > 1000 {
+                        warn!(
+                            "component serialized to a large object: {:?}, {:?}",
+                            entity,
+                            replicate_id.name()
+                        );
+                    }
+
                     estimate.add(C::replicate_id(), component_data.len());
 
                     let update = entity_update
