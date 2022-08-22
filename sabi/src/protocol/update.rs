@@ -402,6 +402,11 @@ pub fn server_send_interest(
         let compressed = compressor
             .compress(&serialized.as_slice())
             .expect("couldn't compress message");
+
+        if compressed.len() >= 3000 {
+            info!("Message is too long");
+            return;
+        }
         //info!("compressed len: {:?}", compressed.len());
 
         server.send_message(*client_id, ServerChannel::EntityUpdate.id(), compressed)
