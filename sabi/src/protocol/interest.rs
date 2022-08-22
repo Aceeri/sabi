@@ -236,7 +236,7 @@ pub fn queue_interests(
             }
 
             used += estimate;
-            break; // we can test 1 component at a time by doing this.
+            //break; // we can test 1 component at a time by doing this.
         }
 
         for interest in unsent.into_iter().rev() {

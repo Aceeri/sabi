@@ -203,15 +203,12 @@ pub fn client_frame_buffer(
     client: &RenetClient,
     deviation: &InputDeviation,
 ) -> f32 {
-    /*
-       let info = client.network_info();
+    let info = client.network_info();
 
-       // 2nd standard deviation so its ~2.1% chance we fall outside of it.
-       let deviation = deviation.deviation * 2.0;
-       let extra_buffer = sim_info.step.as_secs_f32() * 3.0;
-       (info.rtt / 2.0) / 1000.0 + deviation + extra_buffer
-    */
-    sim_info.step.as_secs_f32() * 6.0
+    // 2nd standard deviation so its ~2.1% chance we fall outside of it.
+    let deviation = deviation.deviation * 2.0;
+    let extra_buffer = sim_info.step.as_secs_f32() * 3.0;
+    (info.rtt / 2.0) / 1000.0 + deviation + extra_buffer
 }
 
 pub fn client_recv_interest(
@@ -235,7 +232,7 @@ pub fn client_recv_interest(
         let mut decompressor = zstd::bulk::Decompressor::new().expect("couldn't make decompressor");
 
         let decompressed = decompressor
-            .decompress(&message.as_slice(), 5 * 1024)
+            .decompress(&message.as_slice(), 10 * 1024)
             .expect("could not decompress message");
 
         let message: UpdateMessage = bincode::deserialize(&decompressed).unwrap();
@@ -387,7 +384,7 @@ pub fn server_send_interest(
 
         let input_deviation = history.deviation(*client_id);
 
-        info!("update: {:?}", &update);
+        //info!("update: {:?}", &update);
 
         // check the size of each individual component to find outliers.
         let message = UpdateMessage {
@@ -400,12 +397,12 @@ pub fn server_send_interest(
         };
         let serialized = bincode::serialize(&message).unwrap();
 
-        info!("len: {:?}", serialized.len());
+        //info!("len: {:?}", serialized.len());
         //crate::message_sample::try_add_sample("update", &serialized);
         let compressed = compressor
             .compress(&serialized.as_slice())
             .expect("couldn't compress message");
-        info!("compressed len: {:?}", compressed.len());
+        //info!("compressed len: {:?}", compressed.len());
 
         server.send_message(*client_id, ServerChannel::EntityUpdate.id(), compressed)
     }

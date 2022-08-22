@@ -138,6 +138,12 @@ impl<I> ClientQueuedInputs<I> {
             queue.clean_old(current);
         }
     }
+
+    pub fn retain(&mut self, buffer: i64) {
+        for (_, queue) in &mut self.clients {
+            queue.retain(buffer);
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -207,7 +213,7 @@ pub fn server_recv_input<I>(
 ) where
     I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
 {
-    queued_inputs.clean_old(*tick);
+    queued_inputs.retain(32);
 
     for client_id in server.clients_id().into_iter() {
         while let Some(message) = server.receive_message(client_id, ClientChannel::Input.id()) {
@@ -291,7 +297,7 @@ pub fn client_update_input_buffer<I>(
         + for<'de> Deserialize<'de>
         + Debug,
 {
-    info!("recording {}: {:?}", tick.tick(), player_input.clone());
+    //info!("recording {}: {:?}", tick.tick(), player_input.clone());
     input_buffer.push(*tick, player_input.clone());
 }
 
