@@ -5,7 +5,6 @@ use std::{
 };
 
 use bevy_renet::renet::ServerEvent;
-use smallvec::SmallVec;
 
 use bevy::{prelude::*, utils::HashSet};
 
@@ -203,11 +202,11 @@ pub fn queue_interests(
 
     for (client_id, queue) in queues.iter_mut() {
         let mut used = 0usize;
-        let mut unsent: SmallVec<[Interest; 3]> = SmallVec::new();
+        let mut unsent = Vec::new();
 
         while let Some((entity, replicate_id)) = queue.pop_front() {
             //info!("attempting: ({:?}, {:?})", entity, replicate_id.name());
-            let mut grouped_ids: SmallVec<[&ReplicateId; 3]> = SmallVec::new();
+            let mut grouped_ids = Vec::new();
             grouped_ids.push(&replicate_id);
             if let Some(group) = demands.require.get(&replicate_id) {
                 grouped_ids.extend(group);

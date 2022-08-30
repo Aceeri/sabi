@@ -1,5 +1,4 @@
 use bevy::{prelude::*, reflect::FromReflect};
-use smallvec::SmallVec;
 use std::collections::{btree_map::Entry, BTreeMap};
 
 use serde::{Deserialize, Serialize};
@@ -55,8 +54,8 @@ impl NetworkAck {
     }
 
     /// Sets the new base of this ack and returns any unacked ticks
-    pub fn set_base(&mut self, new_base: NetworkTick) -> SmallVec<[NetworkTick; 4]> {
-        let mut unacked = SmallVec::new();
+    pub fn set_base(&mut self, new_base: NetworkTick) -> Vec<NetworkTick> {
+        let mut unacked = Vec::new();
 
         let base_diff = new_base.tick() as i64 - self.base.tick() as i64;
         for index in ((32 - base_diff).max(0)..32).rev() {

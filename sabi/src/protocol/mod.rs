@@ -23,15 +23,12 @@ pub mod client;
 pub mod demands;
 pub mod input;
 pub mod interest;
-pub mod lobby;
 pub mod resim;
 pub mod server;
-pub mod tick;
 pub mod update;
 
 pub use client::*;
 pub use server::*;
-pub use tick::{tick_hz, NetworkTick};
 pub use update::{ComponentsUpdate, EntityUpdate};
 
 /// Private key for signing connect tokens for clients.
