@@ -4,7 +4,7 @@ use bevy::ecs::prelude::*;
 use bevy::ecs::schedule::IntoSystemDescriptor;
 use bevy::prelude::*;
 
-use crate::protocol::NetworkTick;
+use crate::tick::NetworkTick;
 
 /// This type will be available as a resource, while a fixed timestep stage
 /// runs, to provide info about the current status of the fixed timestep.

@@ -229,11 +229,6 @@ impl PartialEq for SharedShapeEq {
 impl Replicate for Collider {
     type Def = SharedShapeEq;
     fn into_def(self) -> Self::Def {
-        if let Ok(serialized) = bincode::serialize(&self.raw) {
-            let shape = self.raw.0.shape_type();
-            dbg!("collider shape: {:?}", &shape);
-            dbg!("collider serialized: {:?}", serialized.len());
-        }
         SharedShapeEq(self.raw)
     }
     fn from_def(shared_shape: Self::Def) -> Self {

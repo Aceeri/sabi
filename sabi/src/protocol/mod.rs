@@ -41,8 +41,6 @@ pub use update::{ComponentsUpdate, EntityUpdate};
 pub const PRIVATE_KEY: &[u8; NETCODE_KEY_BYTES] = b"JKS$C14tDvez8trgbdZcIuU&wz#OjG&3"; // 32-bytes
 pub const PORT: u16 = 42069;
 
-pub type ClientId = u64;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ServerChannel {
     Message,

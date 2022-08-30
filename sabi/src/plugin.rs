@@ -1,6 +1,7 @@
 use std::{marker::PhantomData, time::Duration};
 
 use bevy::prelude::*;
+#[cfg(feature = "public")]
 use bevy_renet::{
     renet::{RenetClient, RenetError, RenetServer},
     RenetClientPlugin,
@@ -8,6 +9,11 @@ use bevy_renet::{
 use iyes_loopless::prelude::{ConditionHelpers, IntoConditionalSystem};
 use serde::{Deserialize, Serialize};
 
+use crate::stage::{
+    NetworkCoreStage, NetworkSimulationAppExt, NetworkSimulationInfo, NetworkSimulationStage,
+    NetworkStage,
+};
+#[cfg(feature = "public")]
 use crate::{
     protocol::{
         resim::SnapshotBuffer,
@@ -15,20 +21,19 @@ use crate::{
     },
     //replicate::physics2d::ReplicatePhysics2dPlugin,
     replicate::physics3d::ReplicatePhysics3dPlugin,
-    stage::{
-        NetworkCoreStage, NetworkSimulationAppExt, NetworkSimulationInfo, NetworkSimulationStage,
-        NetworkStage,
-    },
     Replicate,
 };
 
 use crate::prelude::*;
+#[cfg(feature = "public")]
 use crate::protocol::*;
 
+#[cfg(feature = "public")]
 pub struct ReplicatePlugin<C>(PhantomData<C>)
 where
     C: 'static + Send + Sync + Component + Replicate + Clone;
 
+#[cfg(feature = "public")]
 impl<C> Default for ReplicatePlugin<C>
 where
     C: 'static + Send + Sync + Component + Replicate + Clone,
@@ -41,6 +46,7 @@ where
 #[derive(SystemLabel, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ServerQueueInterest;
 
+#[cfg(feature = "public")]
 impl<C> Plugin for ReplicatePlugin<C>
 where
     C: 'static + Send + Sync + Component + Replicate + Clone,
@@ -121,8 +127,10 @@ where
             (false, false) => panic!("requires `sabi::Client` or `sabi::Server` to start"),
         }
 
+        #[cfg(feature = "public")]
         app.register_type::<ServerEntity>();
 
+        #[cfg(feature = "public")]
         app.add_event::<(ServerEntity, ComponentsUpdate)>();
         app.add_stage_before(
             CoreStage::Update,
@@ -152,20 +160,25 @@ where
             SystemStage::parallel(),
         );
 
+        #[cfg(feature = "public")]
         app.insert_resource(ServerEntities::default());
+        #[cfg(feature = "public")]
         app.insert_resource(EntityUpdate::new());
         app.insert_resource(NetworkTick::default());
         app.insert_resource(NetworkSimulationInfo::new(self.tick_rate));
 
         app.insert_resource(Lobby::default());
 
+        #[cfg(feature = "public")]
         app.add_plugin(ReplicatePhysics3dPlugin);
         //app.add_plugin(ReplicatePhysics2dPlugin);
         if app.world.contains_resource::<crate::Server>() {
+            #[cfg(feature = "public")]
             app.add_plugin(SabiServerPlugin::<I>::default());
         }
 
         if app.world.contains_resource::<crate::Client>() {
+            #[cfg(feature = "public")]
             app.add_plugin(SabiClientPlugin::<I>::default());
         }
 
@@ -173,12 +186,17 @@ where
 
         //app.add_apply_update_network_system(bevy::transform::transform_propagate_system);
 
+        #[cfg(feature = "public")]
         app.add_plugin(ReplicatePlugin::<Transform>::default());
+        #[cfg(feature = "public")]
         app.add_plugin(ReplicatePlugin::<GlobalTransform>::default());
+        #[cfg(feature = "public")]
         app.add_plugin(ReplicatePlugin::<Name>::default());
 
         app.insert_resource(PreviousRenetError(None));
+        #[cfg(feature = "public")]
         app.add_system(handle_renet_error);
+        #[cfg(feature = "public")]
         app.add_system(handle_client_disconnect);
     }
 }
@@ -192,6 +210,7 @@ impl<I> Default for SabiServerPlugin<I> {
     }
 }
 
+#[cfg(feature = "public")]
 impl<I> Plugin for SabiServerPlugin<I>
 where
     I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
@@ -257,6 +276,7 @@ impl<I> Default for SabiClientPlugin<I> {
     }
 }
 
+#[cfg(feature = "public")]
 impl<I> Plugin for SabiClientPlugin<I>
 where
     I: 'static
@@ -313,6 +333,7 @@ where
 #[derive(Debug)]
 pub struct PreviousRenetError(Option<String>);
 
+#[cfg(feature = "public")]
 pub fn handle_renet_error(
     mut previous: ResMut<PreviousRenetError>,
     mut renet_error: EventReader<RenetError>,
@@ -329,6 +350,7 @@ pub fn handle_renet_error(
     }
 }
 
+#[cfg(feature = "public")]
 pub fn handle_client_disconnect(
     mut commands: Commands,
     local: Option<Res<crate::Local>>,
