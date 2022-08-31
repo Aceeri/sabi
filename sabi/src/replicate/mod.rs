@@ -3,6 +3,7 @@ use std::hash::Hash;
 use std::sync::{Arc, RwLock};
 
 use bevy::prelude::*;
+use bevy::reflect::FromReflect;
 use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
@@ -32,6 +33,7 @@ where
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Types {
+    #[serde(default)]
     pub replicate: ReplicateTypes,
 }
 
@@ -46,6 +48,7 @@ impl Types {
 pub struct ReplicateTypes(HashMap<String, u16>);
 
 impl ReplicateTypes {
+    // Do the serialization ourselves because of bugs with the `toml` crate.
     pub fn to_toml(&self) -> String {
         let types = self
             .0
@@ -72,10 +75,15 @@ lazy_static::lazy_static! {
     pub static ref TYPES: Arc<RwLock<Types>> = Arc::new(RwLock::new(read_types_file()));
 }
 
+pub const TYPES_PATH: &'static str = "types.toml";
+
 pub fn read_types_file() -> Types {
     use std::io::Read;
 
-    let mut file = std::fs::File::open("types.toml").expect("open types.toml");
+    let mut file = match std::fs::File::open(TYPES_PATH) {
+        Ok(file) => file,
+        Err(err) => std::fs::File::create(TYPES_PATH).expect("could not create types.toml"),
+    };
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("read types.toml");
 
@@ -87,7 +95,7 @@ pub fn write_types_file() {
     use std::io::Write;
 
     let types = TYPES.read().expect("read TYPES so we can write");
-    let mut file = std::fs::File::create("types.toml").expect("open types.toml");
+    let mut file = std::fs::File::create(TYPES_PATH).expect("open types.toml");
     let new_toml = types.to_toml();
     file.write_all(new_toml.as_bytes())
         .expect("write to types.toml");
@@ -107,14 +115,8 @@ impl ReplicateId {
 
 pub trait Replicate
 where
-    Self: 'static + Sized + Send + Sync,
+    Self: 'static + Sized + Send + Sync + Reflect + FromReflect,
 {
-    type Def: Serialize + for<'de> Deserialize<'de> + PartialEq;
-    fn into_def(self) -> Self::Def;
-    fn from_def(def: Self::Def) -> Self;
-    fn apply_def(&mut self, def: Self::Def) {
-        *self = Self::from_def(def);
-    }
     fn replicate_id() -> ReplicateId {
         let long_id = std::any::type_name::<Self>().to_owned();
 
@@ -138,6 +140,8 @@ where
         ReplicateId(short_id)
     }
 }
+
+impl<T> Replicate for T where T: 'static + Sized + Send + Sync + Reflect + FromReflect {}
 
 pub enum ReplicationMark<C>
 where
