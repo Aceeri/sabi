@@ -156,7 +156,11 @@ impl Stage for NetworkSimulationStage {
                 .increment_tick();
         };
 
-        while self.info.accumulator >= self.info.timestep() {
+        // A maximum of 1 timestep stage per frame.
+        //
+        // This avoids some input weirdness and not amazing since we are
+        // now bound by the renderer.
+        if self.info.accumulator >= self.info.timestep() {
             self.info.accumulator -= self.info.timestep();
             world.insert_resource(self.info.clone());
 
