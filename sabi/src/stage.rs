@@ -160,7 +160,7 @@ impl Stage for NetworkSimulationStage {
         //
         // This avoids some input weirdness and not amazing since we are
         // now bound by the renderer.
-        if self.info.accumulator >= self.info.timestep() {
+        while self.info.accumulator >= self.info.timestep() {
             self.info.accumulator -= self.info.timestep();
             world.insert_resource(self.info.clone());
 
@@ -168,7 +168,11 @@ impl Stage for NetworkSimulationStage {
                 increment_network_tick(world);
 
                 world.insert_resource(bevy::ecs::schedule::ReportExecutionOrderAmbiguities);
+                let time = world.remove_resource::<Time>();
                 self.schedule.run(world);
+                if let Some(time) = time {
+                    world.insert_resource(time);
+                }
                 world.remove_resource::<bevy::ecs::schedule::ReportExecutionOrderAmbiguities>();
             }
 
