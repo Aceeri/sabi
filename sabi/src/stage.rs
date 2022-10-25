@@ -19,6 +19,8 @@ pub struct NetworkSimulationInfo {
 
     pub accel: bool,
     pub accel_step: Duration,
+
+    pub slowdown: f64,
 }
 
 impl NetworkSimulationInfo {
@@ -29,6 +31,8 @@ impl NetworkSimulationInfo {
 
             accel: true,
             accel_step: Duration::ZERO,
+
+            slowdown: 1.0,
         }
     }
     /// The time duration of each timestep
@@ -61,9 +65,12 @@ impl NetworkSimulationInfo {
 
     pub fn timestep(&self) -> Duration {
         if self.accel {
-            self.step.saturating_sub(self.accel_step)
+            self.step.saturating_sub(self.accel_step) 
+                .mul_f64(self.slowdown)
         } else {
-            self.step.saturating_add(self.accel_step)
+            self.step
+                .saturating_add(self.accel_step)
+                .mul_f64(self.slowdown)
         }
     }
 }
