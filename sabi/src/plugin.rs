@@ -164,8 +164,10 @@ where
         app.insert_resource(ServerEntities::default());
         #[cfg(feature = "public")]
         app.insert_resource(EntityUpdate::new());
-        app.insert_resource(NetworkTick::default());
-        app.insert_resource(NetworkSimulationInfo::new(self.tick_rate));
+        app.init_resource::<NetworkTick>();
+        if !app.world.contains_resource::<NetworkSimulationInfo>() {
+            app.insert_resource(NetworkSimulationInfo::new(self.tick_rate));
+        }
 
         app.insert_resource(Lobby::default());
 
