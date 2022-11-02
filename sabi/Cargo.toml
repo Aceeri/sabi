@@ -26,7 +26,7 @@ sabi_derive = {version = "0.3", path = "../sabi_derive", optional = true}
 zstd = {version = "0.11", features = ["zdict_builder"], optional = true}
 
 #bevy_rapier2d = {version = "0.16", features = ["serde-serialize"]}
-bevy_rapier3d = {version = "0.16", features = ["serde-serialize"]}
+bevy_rapier3d = {version = "0.18", features = ["serde-serialize"]}
 derive_more = "0.99"
 fixed = {version = "1.11", features = ["serde", "std", "serde-str"]}
 fxhash = "0.2.1"
