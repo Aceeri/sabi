@@ -199,13 +199,28 @@ impl Replicate for Dominance {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(remote = "Group")]
+pub struct GroupDef {
+    #[serde(getter = "Group::bits")]
+    pub bits: u32,
+}
+
+impl From<GroupDef> for Group {
+    fn from(def: GroupDef) -> Group {
+        Group::from_bits(def.bits).unwrap_or_default()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "CollisionGroups")]
 #[replicate(remote = "CollisionGroups")]
 #[replicate(crate = "crate")]
 pub struct CollisionGroupsDef {
-    pub memberships: u32,
-    pub filters: u32,
+    #[serde(with = "GroupDef")]
+    pub memberships: Group,
+    #[serde(with = "GroupDef")]
+    pub filters: Group,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
@@ -213,8 +228,10 @@ pub struct CollisionGroupsDef {
 #[replicate(remote = "SolverGroups")]
 #[replicate(crate = "crate")]
 pub struct SolverGroupsDef {
-    pub memberships: u32,
-    pub filters: u32,
+    #[serde(with = "GroupDef")]
+    pub memberships: Group,
+    #[serde(with = "GroupDef")]
+    pub filters: Group,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
