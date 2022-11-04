@@ -65,7 +65,8 @@ impl NetworkSimulationInfo {
 
     pub fn timestep(&self) -> Duration {
         if self.accel {
-            self.step.saturating_sub(self.accel_step) 
+            self.step
+                .saturating_sub(self.accel_step)
                 .mul_f64(self.slowdown)
         } else {
             self.step
@@ -373,7 +374,8 @@ impl NetworkSimulationAppExt for App {
         stage_label: impl StageLabel,
         system_set: SystemSet,
     ) -> &mut Self {
-        self.schedule
+        self.get_network_stage()
+            .schedule
             .add_system_set_to_stage(stage_label, system_set);
         self
     }
