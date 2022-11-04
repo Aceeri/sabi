@@ -380,7 +380,8 @@ pub fn handle_client_disconnect(
             commands.remove_resource::<NetworkTick>();
         }
     } else {
-        if !server.is_some() && tick.is_some() {
+        if server.is_none() && tick.is_some() {
+            error!("server disconnected, removing tick");
             commands.remove_resource::<NetworkTick>();
         }
     }
