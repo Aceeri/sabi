@@ -40,7 +40,6 @@ pub fn new_renet_client<S: AsRef<str>>(ip: S, port: u16) -> Result<RenetClient, 
     Ok(RenetClient::new(
         current_time,
         socket,
-        client_id,
         connection_config,
         ClientAuthentication::Secure {
             connect_token: token,

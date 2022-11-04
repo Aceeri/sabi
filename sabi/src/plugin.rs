@@ -233,7 +233,11 @@ where
         app.insert_resource(crate::protocol::input::ClientQueuedInputs::<I>::new());
         app.insert_resource(crate::protocol::input::ClientReceivedHistory::new());
 
-        app.add_plugin(bevy_renet::RenetServerPlugin);
+        app.add_plugin(bevy_renet::RenetServerPlugin {
+            clear_events: false,
+        });
+
+        app.add_network_system_set(bevy_renet::RenetServerPlugin::get_clear_event_systems());
 
         app.add_system(crate::protocol::interest::setup_baseload.label("setup_baseload"));
         app.add_meta_network_system(
@@ -292,7 +296,11 @@ where
         + std::fmt::Debug,
 {
     fn build(&self, app: &mut App) {
-        app.add_plugin(RenetClientPlugin);
+        app.add_plugin(RenetClientPlugin {
+            clear_events: false,
+        });
+        app.add_network_system_set(RenetClientPlugin::get_clear_event_systems());
+
         app.insert_resource(crate::protocol::update::UpdateMessages::new());
 
         app.add_meta_network_system(
