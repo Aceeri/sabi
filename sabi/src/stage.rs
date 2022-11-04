@@ -65,7 +65,8 @@ impl NetworkSimulationInfo {
 
     pub fn timestep(&self) -> Duration {
         if self.accel {
-            self.step.saturating_sub(self.accel_step) 
+            self.step
+                .saturating_sub(self.accel_step)
                 .mul_f64(self.slowdown)
         } else {
             self.step
@@ -141,10 +142,10 @@ impl Stage for NetworkSimulationStage {
 
         let should_have_tick =
             world.contains_resource::<crate::Server>() || world.contains_resource::<crate::Local>();
-        if should_have_tick && {
+        if should_have_tick {
             if !world.contains_resource::<NetworkTick>() {
                 warn!("Initializing network tick");
-            world.insert_resource(NetworkTick::default());
+                world.insert_resource(NetworkTick::default());
             }
         }
 
