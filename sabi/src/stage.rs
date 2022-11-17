@@ -12,7 +12,7 @@ use crate::tick::NetworkTick;
 /// If you modify the step value, the fixed timestep driver stage will
 /// reconfigure itself to respect it. Your new timestep duration will be
 /// used starting from the next update cycle.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Resource)]
 pub struct NetworkSimulationInfo {
     pub step: Duration,
     pub accumulator: Duration,

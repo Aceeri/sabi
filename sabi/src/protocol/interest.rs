@@ -17,7 +17,7 @@ pub const RESEND_INTEREST_BUFFER: i64 = 32;
 
 pub type Interest = (Entity, ReplicateId);
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Resource)]
 pub struct Baseload {
     clients: BTreeMap<ClientId, bool>,
 }
@@ -95,7 +95,7 @@ pub fn component_changes<C>(
 }
 
 /// Sent clients interests for this frame.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Resource)]
 pub struct ClientUnackedInterests {
     clients: BTreeMap<ClientId, UnackedInterests>,
 }
@@ -247,7 +247,7 @@ pub fn queue_interests(
     sent_unacked.record_from_queue(*tick, &*to_send);
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Resource)]
 pub struct ClientInterestQueues {
     queues: BTreeMap<ClientId, InterestQueue<Interest>>,
 }
@@ -409,7 +409,7 @@ pub fn interest_queue() {
     );
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Resource)]
 pub struct InterestsToSend {
     clients: BTreeMap<ClientId, Vec<Interest>>,
 }

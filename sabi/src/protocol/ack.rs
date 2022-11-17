@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{ClientId, NetworkTick};
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Resource)]
 pub struct ClientAcks {
     acks: BTreeMap<ClientId, NetworkAck>,
 }

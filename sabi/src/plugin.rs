@@ -340,7 +340,7 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Resource)]
 pub struct PreviousRenetError(Option<String>);
 
 #[cfg(feature = "public")]

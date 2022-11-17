@@ -6,7 +6,7 @@ use crate::protocol::*;
 
 pub const DEFAULT_ESTIMATE: usize = 128;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Resource)]
 pub struct ReplicateSizeEstimates(HashMap<ReplicateId, usize>);
 
 impl ReplicateSizeEstimates {
@@ -23,7 +23,7 @@ impl ReplicateSizeEstimates {
     }
 }
 
-#[derive(Deref, Debug, Clone)]
+#[derive(Deref, Debug, Clone, Resource)]
 pub struct ReplicateMaxSize(pub usize);
 
 impl Default for ReplicateMaxSize {
@@ -89,7 +89,7 @@ impl<A, B> Default for RequireTogether<A, B> {
 ///
 /// This is mainly for saving bandwidth on stuff like sending both `Transform` and `GlobalTransform`
 /// when it only makes sense to do so if they are both being sent.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, Resource)]
 pub struct ReplicateDemands {
     pub require: HashMap<ReplicateId, Vec<ReplicateId>>,
     pub dedup: HashMap<ReplicateId, Vec<ReplicateId>>,
