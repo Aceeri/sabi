@@ -72,7 +72,7 @@ impl ClientEntityUpdates {
     }
 }
 
-#[derive(Deref, DerefMut, Default, Clone, Serialize, Deserialize)]
+#[derive(Deref, DerefMut, Default, Clone, Serialize, Deserialize, Resource)]
 pub struct EntityUpdate {
     pub updates: BTreeMap<ServerEntity, ComponentsUpdate>,
 }

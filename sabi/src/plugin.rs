@@ -108,7 +108,8 @@ where
         + Default
         + Serialize
         + for<'de> Deserialize<'de>
-        + std::fmt::Debug,
+        + std::fmt::Debug
+        + Resource,
 {
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<crate::Local>() {
@@ -293,7 +294,8 @@ where
         + Default
         + Serialize
         + for<'de> Deserialize<'de>
-        + std::fmt::Debug,
+        + std::fmt::Debug
+        + Resource,
 {
     fn build(&self, app: &mut App) {
         app.add_plugin(RenetClientPlugin {

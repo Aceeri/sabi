@@ -131,7 +131,7 @@ impl NetworkSimulationStage {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Resource)]
 pub struct Rewind(pub NetworkTick);
 
 impl Stage for NetworkSimulationStage {
@@ -308,7 +308,7 @@ pub trait NetworkSimulationAppExt {
 impl NetworkSimulationAppExt for App {
     fn get_network_stage(&mut self) -> &mut NetworkSimulationStage {
         self.schedule
-            .get_stage_mut(&NetworkStage)
+            .get_stage_mut(NetworkStage)
             .expect("expected NetworkStage")
     }
 

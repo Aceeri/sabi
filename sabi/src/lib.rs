@@ -21,10 +21,10 @@ pub mod replicate;
 pub mod stage;
 pub mod tick;
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Resource)]
 pub struct Client;
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Resource)]
 pub struct Server;
 
 #[derive(Default, Debug, Clone, Copy, Resource)]

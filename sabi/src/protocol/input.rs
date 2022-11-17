@@ -220,7 +220,7 @@ pub fn server_recv_input<I>(
             let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
             let input_message: ClientInputMessage<I> = bincode::deserialize(&decompressed).unwrap();
 
-            recv_history.push(client_id, time.time_since_startup());
+            recv_history.push(client_id, time.elapsed());
             acks.apply_ack(client_id, &input_message.ack);
             queued_inputs.upsert(client_id, input_message.inputs);
         }
