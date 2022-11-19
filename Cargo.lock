@@ -448,14 +448,15 @@ checksum = "c36f4d3af0cda50c07e2010d0351ab79594681116edd280592ca394db73ef32b"
 
 [[package]]
 name = "bevy_rapier3d"
-version = "0.18.0"
-source = "git+https://github.com/devil-ira/bevy_rapier?branch=bevy-0.9#3fabadc0503835caf1e9dc2be1d4da8825046f92"
+version = "0.19.0"
+source = "git+https://github.com/dimforge/bevy_rapier?tag=v0.19.0#6d1a51940306d8347b986455f811a4eb92c32a10"
 dependencies = [
  "bevy",
  "bitflags",
  "log",
  "nalgebra",
  "rapier3d",
+ "serde",
 ]
 
 [[package]]
@@ -676,6 +677,9 @@ name = "bit-vec"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bitflags"
@@ -1407,9 +1411,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.9.1"
+version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10a35a97730320ffe8e2d410b5d3b69279b98d2c14bdb8b70ea89ecf7888d41e"
+checksum = "1885e79c1fc4b10f0e172c475f458b7f7b93061064d98c3293e98c5ba0c8b399"
 dependencies = [
  "autocfg",
  "hashbrown",
@@ -1454,7 +1458,7 @@ checksum = "4217ad341ebadf8d8e724e264f13e593e0648f5b3e94b3896a5df283be015ecc"
 [[package]]
 name = "iyes_loopless"
 version = "0.9.0"
-source = "git+https://github.com/IyesGames/iyes_loopless#92ecd3cc6e97a833581f8a7caeb4a155fa649c08"
+source = "git+https://github.com/IyesGames/iyes_loopless#0006f78d7a33d190a3223418449949efc2b87b57"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1656,6 +1660,7 @@ dependencies = [
  "num-complex",
  "num-rational",
  "num-traits",
+ "serde",
  "simba",
  "typenum",
 ]
@@ -1747,6 +1752,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ae39348c8bc5fbd7f40c727a9925f03517afd2ab27d46702108b6a7e5414c19"
 dependencies = [
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1918,6 +1924,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "rustc-hash",
+ "serde",
  "simba",
  "slab",
  "smallvec",
@@ -2078,6 +2085,7 @@ dependencies = [
  "num-traits",
  "parry3d",
  "rustc-hash",
+ "serde",
  "simba",
 ]
 
