@@ -15,7 +15,7 @@ impl<C> Default for ComponentSnapshot<C> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Resource)]
 pub struct SnapshotBuffer<C> {
     snapshots: BTreeMap<NetworkTick, ComponentSnapshot<C>>,
 }

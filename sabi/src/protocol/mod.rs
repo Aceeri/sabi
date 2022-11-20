@@ -149,7 +149,7 @@ pub struct ServerEntity(u32, u32);
 
 impl ServerEntity {
     pub fn from_entity(entity: Entity) -> Self {
-        Self(entity.id(), entity.generation())
+        Self(entity.index(), entity.generation())
     }
 }
 

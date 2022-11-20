@@ -41,7 +41,7 @@ impl UpdateMessage {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Resource)]
 pub struct ClientEntityUpdates {
     clients: BTreeMap<ClientId, EntityUpdate>,
 }
@@ -72,7 +72,7 @@ impl ClientEntityUpdates {
     }
 }
 
-#[derive(Deref, DerefMut, Default, Clone, Serialize, Deserialize)]
+#[derive(Deref, DerefMut, Default, Clone, Serialize, Deserialize, Resource)]
 pub struct EntityUpdate {
     pub updates: BTreeMap<ServerEntity, ComponentsUpdate>,
 }
@@ -156,7 +156,7 @@ impl EntityUpdate {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Resource)]
 pub struct UpdateMessages {
     messages: BTreeMap<NetworkTick, UpdateMessage>,
 }

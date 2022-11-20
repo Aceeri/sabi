@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
     Deserialize,
     Reflect,
     FromReflect,
+    Resource
 )]
 pub struct NetworkTick(u64);
 

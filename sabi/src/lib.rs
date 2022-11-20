@@ -7,6 +7,7 @@ extern crate sabi_derive;
 #[doc(hidden)]
 #[cfg(feature = "public")]
 pub use sabi_derive::*;
+use bevy::prelude::*;
 
 pub mod error;
 pub mod lobby;
@@ -20,13 +21,13 @@ pub mod replicate;
 pub mod stage;
 pub mod tick;
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Resource)]
 pub struct Client;
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Resource)]
 pub struct Server;
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, Resource)]
 pub struct Local;
 
 pub mod prelude {

@@ -29,7 +29,7 @@ pub struct InputDeviation {
     pub deviation: f32,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Resource)]
 pub struct ClientReceivedHistory {
     clients: BTreeMap<ClientId, ReceivedHistory>,
 }
@@ -106,7 +106,7 @@ pub struct ClientInputMessage<I> {
     pub inputs: QueuedInputs<I>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Resource)]
 pub struct ClientQueuedInputs<I> {
     clients: HashMap<ClientId, QueuedInputs<I>>,
 }
@@ -146,7 +146,7 @@ impl<I> ClientQueuedInputs<I> {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Resource)]
 pub struct QueuedInputs<I> {
     queue: BTreeMap<NetworkTick, I>,
 }
@@ -220,7 +220,7 @@ pub fn server_recv_input<I>(
             let decompressed = zstd::bulk::decompress(&message.as_slice(), 10 * 1024).unwrap();
             let input_message: ClientInputMessage<I> = bincode::deserialize(&decompressed).unwrap();
 
-            recv_history.push(client_id, time.time_since_startup());
+            recv_history.push(client_id, time.elapsed());
             acks.apply_ack(client_id, &input_message.ack);
             queued_inputs.upsert(client_id, input_message.inputs);
         }
@@ -295,7 +295,8 @@ pub fn client_update_input_buffer<I>(
         + Default
         + Serialize
         + for<'de> Deserialize<'de>
-        + Debug,
+        + Debug
+        + Resource,
 {
     //info!("recording {}: {:?}", tick.tick(), player_input.clone());
     input_buffer.push(*tick, player_input.clone());
@@ -314,7 +315,8 @@ pub fn client_apply_input_buffer<I>(
         + Default
         + Serialize
         + for<'de> Deserialize<'de>
-        + Debug,
+        + Debug
+        + Resource,
 {
     if let Some(input) = input_buffer.get(&*tick) {
         //info!("{}: {:?}", tick.tick(), input);
