@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use bevy::{ecs::entity::Entities, prelude::*};
 
-use super::{NetworkTick, Replicate};
+use super::NetworkTick;
 
 pub const SNAPSHOT_RETAIN_BUFFER: i64 = 64;
 
@@ -15,7 +15,7 @@ impl<C> Default for ComponentSnapshot<C> {
     }
 }
 
-#[derive(Debug, Resource)]
+#[derive(Resource, Debug)]
 pub struct SnapshotBuffer<C> {
     snapshots: BTreeMap<NetworkTick, ComponentSnapshot<C>>,
 }
@@ -53,7 +53,7 @@ pub fn store_snapshot<C>(
     mut snapshots: ResMut<SnapshotBuffer<C>>,
     query: Query<(Entity, &C)>,
 ) where
-    C: 'static + Send + Sync + Component + Replicate + Clone,
+    C: 'static + Component + Clone,
 {
     let mut snapshot = ComponentSnapshot::default();
     for (entity, component) in query.iter() {
@@ -69,7 +69,7 @@ pub fn rewind<C>(
     tick: Res<NetworkTick>,
     snapshots: Res<SnapshotBuffer<C>>,
 ) where
-    C: 'static + Send + Sync + Component + Replicate + Clone,
+    C: 'static + Component + Clone,
 {
     if let Some(snapshot) = snapshots.snapshots.get(&*tick) {
         for (entity, component) in snapshot.0.iter() {

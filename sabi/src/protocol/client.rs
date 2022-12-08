@@ -57,7 +57,7 @@ pub fn client_connected(client: Option<Res<RenetClient>>) -> bool {
 /// Authoritative mapping of server entities to entities for clients.
 ///
 /// This is so clients can figure out which entity the server is talking about.
-#[derive(Default, Debug, Clone, Resource)]
+#[derive(Resource, Default, Debug, Clone)]
 pub struct ServerEntities(HashMap<ServerEntity, Entity>);
 
 impl ServerEntities {

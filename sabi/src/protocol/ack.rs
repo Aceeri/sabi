@@ -5,7 +5,14 @@ use serde::{Deserialize, Serialize};
 
 use super::{ClientId, NetworkTick};
 
-#[derive(Default, Clone, Resource)]
+/// Per client ack bits.
+///
+/// This is so we can tell the server which packets we received in the past
+/// so that the server knows to re-send if it didn't make it.
+///
+/// Each bit represents a "received" or "unreceived" packet which is shifted
+/// based on the current network tick.
+#[derive(Resource, Default, Clone)]
 pub struct ClientAcks {
     acks: BTreeMap<ClientId, NetworkAck>,
 }

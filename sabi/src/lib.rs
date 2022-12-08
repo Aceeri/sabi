@@ -1,12 +1,3 @@
-// Re-export the derive macros here.
-#[allow(unused_imports)]
-#[macro_use]
-#[cfg(feature = "public")]
-extern crate sabi_derive;
-
-#[doc(hidden)]
-#[cfg(feature = "public")]
-pub use sabi_derive::*;
 use bevy::prelude::*;
 
 pub mod error;
@@ -21,13 +12,19 @@ pub mod replicate;
 pub mod stage;
 pub mod tick;
 
-#[derive(Default, Debug, Clone, Copy, Resource)]
+/// Marker resource to denote that this should receive replication information.
+#[derive(Resource, Default, Debug, Clone, Copy)]
 pub struct Client;
 
-#[derive(Default, Debug, Clone, Copy, Resource)]
+/// Marker resource to denote that this should receive inputs and send replication
+/// information.
+#[derive(Resource, Default, Debug, Clone, Copy)]
 pub struct Server;
 
-#[derive(Default, Debug, Clone, Copy, Resource)]
+/// Act as both server and client.
+///
+/// Effectively this should just do nothing in terms of networking.
+#[derive(Resource, Default, Debug, Clone, Copy)]
 pub struct Local;
 
 pub mod prelude {
@@ -43,8 +40,8 @@ pub mod prelude {
     #[cfg(feature = "public")]
     pub use crate::plugin::{ReplicatePlugin, SabiPlugin};
     #[cfg(feature = "public")]
-    pub use crate::replicate::{Replicate, ReplicateId};
+    pub use crate::replicate::{replicate_id, ReplicateId};
 }
 
 #[cfg(feature = "public")]
-pub use crate::replicate::{Replicate, ReplicateId};
+pub use crate::replicate::{replicate_id, ReplicateId};

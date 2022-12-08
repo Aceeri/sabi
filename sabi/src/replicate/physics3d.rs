@@ -3,7 +3,7 @@ use bevy_rapier3d::{prelude::*, rapier::prelude::SharedShape};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{plugin::ReplicatePlugin, protocol::demands::RequireDependency, Replicate};
+use crate::{plugin::ReplicatePlugin, protocol::demands::RequireDependency};
 
 pub struct ReplicatePhysics3dPlugin;
 impl Plugin for ReplicatePhysics3dPlugin {
@@ -23,16 +23,17 @@ impl Plugin for ReplicatePhysics3dPlugin {
         app.add_plugin(ReplicatePlugin::<Sensor>::default());
         app.add_plugin(ReplicatePlugin::<CollisionGroups>::default());
         app.add_plugin(ReplicatePlugin::<SolverGroups>::default());
-        app.add_plugin(ReplicatePlugin::<Collider>::default());
+        //app.add_plugin(ReplicatePlugin::<Collider>::default());
         app.add_plugin(ReplicatePlugin::<ColliderScale>::default());
 
         app.add_plugin(ReplicatePlugin::<AdditionalMassProperties>::default());
         app.add_plugin(ReplicatePlugin::<ColliderMassProperties>::default());
 
-        app.add_plugin(RequireDependency::<Collider, RigidBody>::default());
+        //app.add_plugin(RequireDependency::<Collider, RigidBody>::default());
     }
 }
 
+/*
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Replicate)]
 #[serde(remote = "RigidBody")]
 #[replicate(remote = "RigidBody")]
@@ -261,3 +262,5 @@ pub enum ColliderScaleDef {
     Relative(Vec3),
     Absolute(Vec3),
 }
+
+ */

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// Networking resource to communicate what "game tick" things belong to.
 #[derive(
+    Resource,
     Debug,
     Copy,
     Clone,
@@ -18,7 +19,6 @@ use serde::{Deserialize, Serialize};
     Deserialize,
     Reflect,
     FromReflect,
-    Resource
 )]
 pub struct NetworkTick(u64);
 

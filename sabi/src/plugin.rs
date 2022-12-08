@@ -21,7 +21,6 @@ use crate::{
     },
     //replicate::physics2d::ReplicatePhysics2dPlugin,
     replicate::physics3d::ReplicatePhysics3dPlugin,
-    Replicate,
 };
 
 use crate::prelude::*;
@@ -31,12 +30,12 @@ use crate::protocol::*;
 #[cfg(feature = "public")]
 pub struct ReplicatePlugin<C>(PhantomData<C>)
 where
-    C: 'static + Send + Sync + Component + Replicate + Clone;
+    C: 'static + Component + Reflect + FromReflect + Clone;
 
 #[cfg(feature = "public")]
 impl<C> Default for ReplicatePlugin<C>
 where
-    C: 'static + Send + Sync + Component + Replicate + Clone,
+    C: 'static + Component + Reflect + FromReflect + Clone,
 {
     fn default() -> Self {
         Self(PhantomData)
@@ -49,7 +48,7 @@ pub struct ServerQueueInterest;
 #[cfg(feature = "public")]
 impl<C> Plugin for ReplicatePlugin<C>
 where
-    C: 'static + Send + Sync + Component + Replicate + Clone,
+    C: 'static + Component + Reflect + FromReflect + Clone,
 {
     fn build(&self, app: &mut App) {
         if app.world.contains_resource::<crate::Server>() {
@@ -103,6 +102,7 @@ where
     I: 'static
         + Send
         + Sync
+        + Resource
         + Component
         + Clone
         + Default
@@ -216,7 +216,15 @@ impl<I> Default for SabiServerPlugin<I> {
 #[cfg(feature = "public")]
 impl<I> Plugin for SabiServerPlugin<I>
 where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+    I: 'static
+        + Send
+        + Sync
+        + Resource
+        + Component
+        + Clone
+        + Default
+        + Serialize
+        + for<'de> Deserialize<'de>,
 {
     fn build(&self, app: &mut App) {
         app.insert_resource(crate::protocol::interest::InterestsToSend::new());
@@ -289,6 +297,7 @@ where
     I: 'static
         + Send
         + Sync
+        + Resource
         + Component
         + Clone
         + Default
@@ -342,7 +351,8 @@ where
     }
 }
 
-#[derive(Debug, Resource)]
+/// Deduplicate renet errors so we don't spam the logs with the same message.
+#[derive(Resource, Debug)]
 pub struct PreviousRenetError(Option<String>);
 
 #[cfg(feature = "public")]
@@ -362,6 +372,8 @@ pub fn handle_renet_error(
     }
 }
 
+/// Reset the networking state if the client was disconnected from the server so we can
+/// try and reconnect in the future without weirdness like duplicate entities.
 #[cfg(feature = "public")]
 pub fn handle_client_disconnect(
     mut commands: Commands,

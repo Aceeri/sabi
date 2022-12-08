@@ -4,14 +4,18 @@ use std::{
     time::Duration,
 };
 
-use bevy::{ecs::entity::Entities, prelude::*};
+use bevy::{
+    ecs::entity::Entities,
+    prelude::*,
+    reflect::serde::{ReflectSerializer, UntypedReflectDeserializer},
+};
 use bevy_renet::renet::{RenetClient, RenetServer};
 
 use crate::{
     prelude::*,
     stage::{NetworkSimulationInfo, Rewind},
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeSeed, Deserialize, Serialize};
 
 use super::{
     demands::ReplicateSizeEstimates,
@@ -41,7 +45,7 @@ impl UpdateMessage {
     }
 }
 
-#[derive(Default, Debug, Clone, Resource)]
+#[derive(Resource, Default, Debug, Clone)]
 pub struct ClientEntityUpdates {
     clients: BTreeMap<ClientId, EntityUpdate>,
 }
@@ -72,7 +76,7 @@ impl ClientEntityUpdates {
     }
 }
 
-#[derive(Deref, DerefMut, Default, Clone, Serialize, Deserialize, Resource)]
+#[derive(Resource, Deref, DerefMut, Default, Clone, Serialize, Deserialize)]
 pub struct EntityUpdate {
     pub updates: BTreeMap<ServerEntity, ComponentsUpdate>,
 }
@@ -129,7 +133,7 @@ impl EntityUpdate {
     }
 }
 
-#[derive(Default, Deref, DerefMut, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Resource, Default, Deref, DerefMut, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ComponentsUpdate(pub BTreeMap<ReplicateId, Vec<u8>>);
 
 impl ComponentsUpdate {
@@ -156,7 +160,7 @@ impl EntityUpdate {
     }
 }
 
-#[derive(Debug, Clone, Resource)]
+#[derive(Resource, Debug, Clone)]
 pub struct UpdateMessages {
     messages: BTreeMap<NetworkTick, UpdateMessage>,
 }
@@ -293,28 +297,33 @@ pub fn client_apply_server_update(
 }
 
 pub fn client_update<C>(
+    type_registry: Res<AppTypeRegistry>,
     mut commands: Commands,
     entities: &Entities,
     server_entities: Res<ServerEntities>,
     mut update_events: EventReader<(ServerEntity, ComponentsUpdate)>,
     mut query: Query<&mut C>,
 ) where
-    C: 'static + Send + Sync + Component + Replicate + Clone,
+    C: 'static + Component + Reflect + FromReflect + Clone,
 {
+    let type_registry = type_registry.read();
     for (server_entity, components_update) in update_events.iter() {
-        if let Some(update_data) = components_update.get(&C::replicate_id()) {
-            let def: <C as Replicate>::Def = bincode::deserialize(&update_data).unwrap();
+        if let Some(update_data) = components_update.get(&crate::replicate_id::<C>()) {
+            let reflect_deserializer = UntypedReflectDeserializer::new(&type_registry);
+            let mut deserializer = ron::de::Deserializer::from_bytes(&update_data).unwrap();
+            let reflect_value = reflect_deserializer.deserialize(&mut deserializer).unwrap();
+
             if let Some(entity) = server_entities.get(entities, *server_entity) {
                 if let Ok(mut component) = query.get_mut(entity) {
-                    let current_def = component.clone().into_def();
-                    if current_def != def {
-                        //info!("updating component");
-                        component.apply_def(def);
-                    }
+                    //info!("updating component");
+                    component.apply(&*reflect_value);
                 } else {
                     //info!("inserting new component");
-                    let component = C::from_def(def);
-                    commands.entity(entity).insert(component);
+                    if let Some(component) = C::from_reflect(&*reflect_value) {
+                        commands.entity(entity).insert(component);
+                    } else {
+                        error!("could not construct value from reflect.");
+                    }
                 }
             } else {
                 error!("server entity was not spawned before sending component event");
@@ -330,21 +339,24 @@ pub fn server_clear_queue(mut updates: ResMut<ClientEntityUpdates>) {
 }
 
 pub fn server_queue_interest<C>(
+    type_registry: Res<AppTypeRegistry>,
     mut estimate: ResMut<ReplicateSizeEstimates>,
     mut updates: ResMut<ClientEntityUpdates>,
     to_send: Res<InterestsToSend>,
     query: Query<&C>,
 ) where
-    C: 'static + Send + Sync + Component + Replicate + Clone,
+    C: 'static + Component + Reflect + FromReflect + Clone,
 {
+    let type_registry = type_registry.read();
+
     for (client_id, interests) in to_send.iter() {
         let entity_update = updates.upsert(*client_id);
         for (entity, replicate_id) in interests.iter() {
-            if *replicate_id == C::replicate_id() {
+            if *replicate_id == crate::replicate_id::<C>() {
                 if let Ok(component) = query.get(*entity) {
                     let server_entity = ServerEntity::from_entity(*entity);
-                    let component_def = component.clone().into_def();
-                    let component_data = bincode::serialize(&component_def).unwrap();
+                    let serializer = ReflectSerializer::new(component, &type_registry);
+                    let component_data = ron::ser::to_string(&serializer).unwrap().into_bytes();
 
                     if component_data.len() > 1000 {
                         warn!(
@@ -354,12 +366,12 @@ pub fn server_queue_interest<C>(
                         );
                     }
 
-                    estimate.add(C::replicate_id(), component_data.len());
+                    estimate.add(crate::replicate_id::<C>(), component_data.len());
 
                     let update = entity_update
                         .entry(server_entity)
                         .or_insert(ComponentsUpdate::new());
-                    update.insert(C::replicate_id(), component_data);
+                    update.insert(crate::replicate_id::<C>(), component_data);
                 }
             }
         }

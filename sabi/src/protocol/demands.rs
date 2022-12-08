@@ -6,7 +6,12 @@ use crate::protocol::*;
 
 pub const DEFAULT_ESTIMATE: usize = 128;
 
-#[derive(Debug, Clone, Resource)]
+/// Try to guess what size the components that we are replicating will be.
+///
+/// We might want to do this the other way around where we serialize each component before
+/// and then we combine each message so we know the definitive size before we queue
+/// them up.
+#[derive(Resource, Debug, Clone)]
 pub struct ReplicateSizeEstimates(HashMap<ReplicateId, usize>);
 
 impl ReplicateSizeEstimates {
@@ -23,7 +28,8 @@ impl ReplicateSizeEstimates {
     }
 }
 
-#[derive(Deref, Debug, Clone, Resource)]
+/// Maximum size in bytes for how long a replication request can be.
+#[derive(Resource, Deref, Debug, Clone)]
 pub struct ReplicateMaxSize(pub usize);
 
 impl Default for ReplicateMaxSize {
@@ -49,8 +55,8 @@ impl<ROOT, DEPENDENCY> Default for RequireDependency<ROOT, DEPENDENCY> {
 
 impl<ROOT, DEPENDENCY> Plugin for RequireDependency<ROOT, DEPENDENCY>
 where
-    ROOT: Replicate,
-    DEPENDENCY: Replicate,
+    ROOT: 'static + Reflect + FromReflect,
+    DEPENDENCY: 'static + Reflect + FromReflect,
 {
     fn build(&self, app: &mut App) {
         if !app.world.contains_resource::<ReplicateDemands>() {
@@ -64,9 +70,9 @@ where
 
         demands
             .require
-            .entry(ROOT::replicate_id())
+            .entry(crate::replicate_id::<ROOT>())
             .or_insert(Vec::new())
-            .push(DEPENDENCY::replicate_id())
+            .push(crate::replicate_id::<DEPENDENCY>())
     }
 }
 
@@ -89,7 +95,7 @@ impl<A, B> Default for RequireTogether<A, B> {
 ///
 /// This is mainly for saving bandwidth on stuff like sending both `Transform` and `GlobalTransform`
 /// when it only makes sense to do so if they are both being sent.
-#[derive(Debug, Default, Clone, Resource)]
+#[derive(Resource, Debug, Default, Clone)]
 pub struct ReplicateDemands {
     pub require: HashMap<ReplicateId, Vec<ReplicateId>>,
     pub dedup: HashMap<ReplicateId, Vec<ReplicateId>>,

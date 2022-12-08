@@ -29,7 +29,7 @@ pub struct InputDeviation {
     pub deviation: f32,
 }
 
-#[derive(Default, Debug, Clone, Resource)]
+#[derive(Resource, Default, Debug, Clone)]
 pub struct ClientReceivedHistory {
     clients: BTreeMap<ClientId, ReceivedHistory>,
 }
@@ -106,7 +106,7 @@ pub struct ClientInputMessage<I> {
     pub inputs: QueuedInputs<I>,
 }
 
-#[derive(Debug, Clone, Resource)]
+#[derive(Resource, Debug, Clone)]
 pub struct ClientQueuedInputs<I> {
     clients: HashMap<ClientId, QueuedInputs<I>>,
 }
@@ -146,7 +146,7 @@ impl<I> ClientQueuedInputs<I> {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Resource)]
+#[derive(Resource, Debug, Clone, Serialize, Deserialize)]
 pub struct QueuedInputs<I> {
     queue: BTreeMap<NetworkTick, I>,
 }
@@ -290,6 +290,7 @@ pub fn client_update_input_buffer<I>(
     I: 'static
         + Send
         + Sync
+        + Resource
         + Component
         + Clone
         + Default
@@ -310,6 +311,7 @@ pub fn client_apply_input_buffer<I>(
     I: 'static
         + Send
         + Sync
+        + Resource
         + Component
         + Clone
         + Default

@@ -10,14 +10,14 @@ use bevy::{prelude::*, utils::HashSet};
 
 use super::{
     demands::{ReplicateDemands, ReplicateMaxSize, ReplicateSizeEstimates},
-    ClientId, NetworkTick, Replicate, ReplicateId,
+    replicate_id, ClientId, NetworkTick, ReplicateId,
 };
 
 pub const RESEND_INTEREST_BUFFER: i64 = 32;
 
 pub type Interest = (Entity, ReplicateId);
 
-#[derive(Debug, Clone, Default, Resource)]
+#[derive(Resource, Debug, Clone, Default)]
 pub struct Baseload {
     clients: BTreeMap<ClientId, bool>,
 }
@@ -58,12 +58,12 @@ pub fn baseload_components<C>(
     mut queues: ResMut<ClientInterestQueues>,
     query: Query<Entity, With<C>>,
 ) where
-    C: 'static + Send + Sync + Component + Replicate + Clone,
+    C: 'static + Component + Reflect + FromReflect + Clone,
 {
     for (client_id, should_load) in baseload.iter_mut() {
         if *should_load {
             let queue = queues.entry(*client_id);
-            for interest in query.iter().map(|e| (e, <C as Replicate>::replicate_id())) {
+            for interest in query.iter().map(|e| (e, replicate_id::<C>())) {
                 queue.push_back(interest);
             }
         }
@@ -80,11 +80,11 @@ pub fn component_changes<C>(
     mut queues: ResMut<ClientInterestQueues>,
     query: Query<Entity, Changed<C>>,
 ) where
-    C: 'static + Send + Sync + Component + Replicate + Clone,
+    C: 'static + Component + Reflect + FromReflect + Clone,
 {
     let changes = query
         .iter()
-        .map(|e| (e, <C as Replicate>::replicate_id()))
+        .map(|e| (e, replicate_id::<C>()))
         .collect::<Vec<_>>();
 
     for (_client_id, queue) in queues.iter_mut() {
@@ -95,7 +95,7 @@ pub fn component_changes<C>(
 }
 
 /// Sent clients interests for this frame.
-#[derive(Default, Debug, Clone, Resource)]
+#[derive(Resource, Default, Debug, Clone)]
 pub struct ClientUnackedInterests {
     clients: BTreeMap<ClientId, UnackedInterests>,
 }
@@ -247,7 +247,7 @@ pub fn queue_interests(
     sent_unacked.record_from_queue(*tick, &*to_send);
 }
 
-#[derive(Default, Clone, Resource)]
+#[derive(Resource, Default, Clone)]
 pub struct ClientInterestQueues {
     queues: BTreeMap<ClientId, InterestQueue<Interest>>,
 }
@@ -409,7 +409,7 @@ pub fn interest_queue() {
     );
 }
 
-#[derive(Default, Debug, Clone, Resource)]
+#[derive(Resource, Default, Debug, Clone)]
 pub struct InterestsToSend {
     clients: BTreeMap<ClientId, Vec<Interest>>,
 }

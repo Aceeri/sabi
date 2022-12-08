@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 
-pub mod general;
+//pub mod general;
 //pub mod physics2d;
 pub mod physics3d;
 
@@ -44,7 +44,7 @@ impl Types {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct ReplicateTypes(HashMap<String, u16>);
 
 impl ReplicateTypes {
@@ -102,6 +102,7 @@ pub fn write_types_file() {
     file.flush().expect("could not flush to types.toml");
 }
 
+/// Smaller unique id per type for serialization so it is easier to compress for network packets.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ReplicateId(pub u16);
@@ -113,44 +114,33 @@ impl ReplicateId {
     }
 }
 
-pub trait Replicate
+/// An id that should be the same over time/builds/etc. so that the server and client can
+/// accurately communicate with eachother.
+///
+/// Currently this is persistent based on the `types.toml` file in the project folder.
+/// If this file is cleared then it may not be the same in the next build.
+pub fn replicate_id<T>() -> ReplicateId
 where
-    Self: 'static + Sized + Send + Sync + Reflect + FromReflect,
+    T: 'static + Reflect + FromReflect,
 {
-    fn replicate_id() -> ReplicateId {
-        let long_id = std::any::type_name::<Self>().to_owned();
+    let long_id = std::any::type_name::<T>().to_owned();
 
-        let read_lock = TYPES.read().expect("read TYPES");
-        let short_id = match read_lock.replicate.0.get(&long_id) {
-            Some(short_id) => *short_id,
-            None => {
-                drop(read_lock);
+    let read_lock = TYPES.read().expect("read TYPES");
+    let short_id = match read_lock.replicate.0.get(&long_id) {
+        Some(short_id) => *short_id,
+        None => {
+            drop(read_lock);
 
-                info!("adding new type to types.toml: {}", long_id);
-                let mut write_lock = TYPES.write().expect("could not write short id");
-                let next_id = write_lock.replicate.next_id();
-                write_lock.replicate.0.insert(long_id, next_id);
-                drop(write_lock);
+            info!("adding new type to types.toml: {}", long_id);
+            let mut write_lock = TYPES.write().expect("could not write short id");
+            let next_id = write_lock.replicate.next_id();
+            write_lock.replicate.0.insert(long_id, next_id);
+            drop(write_lock);
 
-                write_types_file();
-                next_id
-            }
-        };
+            write_types_file();
+            next_id
+        }
+    };
 
-        ReplicateId(short_id)
-    }
-}
-
-impl<T> Replicate for T where T: 'static + Sized + Send + Sync + Reflect + FromReflect {}
-
-pub enum ReplicationMark<C>
-where
-    C: 'static + Component + Replicate,
-{
-    /// Make sure the component gets to the client once so it knows to have it on the entity.
-    ///
-    /// Past that never re-sends.
-    Once(PhantomData<C>),
-    /// Sends a component whenever it is highest in priority.
-    Constant(PhantomData<C>),
+    ReplicateId(short_id)
 }
