@@ -8,6 +8,10 @@ use crate::{plugin::ReplicatePlugin, protocol::demands::RequireDependency};
 pub struct ReplicatePhysics3dPlugin;
 impl Plugin for ReplicatePhysics3dPlugin {
     fn build(&self, app: &mut App) {
+        app.register_type::<CoefficientCombineRule>()
+            .register_type::<ColliderMassProperties>()
+            .register_type::<Group>();
+
         app.add_plugin(ReplicatePlugin::<RigidBody>::default());
         app.add_plugin(ReplicatePlugin::<Velocity>::default());
         app.add_plugin(ReplicatePlugin::<LockedAxes>::default());

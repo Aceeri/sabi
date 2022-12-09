@@ -112,6 +112,9 @@ where
         + Resource,
 {
     fn build(&self, app: &mut App) {
+        app.world
+            .init_resource::<crate::protocol::demands::ReplicateDemands>();
+
         if app.world.contains_resource::<crate::Local>() {
             info!("initiating as local");
             app.world.remove_resource::<crate::Server>();
