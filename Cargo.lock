@@ -2230,7 +2230,6 @@ dependencies = [
  "serde",
  "toml",
  "vec-collections",
- "wgpu-types 0.13.2",
  "zstd",
 ]
 
@@ -2746,7 +2745,7 @@ dependencies = [
  "web-sys",
  "wgpu-core",
  "wgpu-hal",
- "wgpu-types 0.14.1",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -2770,7 +2769,7 @@ dependencies = [
  "thiserror",
  "web-sys",
  "wgpu-hal",
- "wgpu-types 0.14.1",
+ "wgpu-types",
 ]
 
 [[package]]
@@ -2808,17 +2807,8 @@ dependencies = [
  "thiserror",
  "wasm-bindgen",
  "web-sys",
- "wgpu-types 0.14.1",
+ "wgpu-types",
  "winapi",
-]
-
-[[package]]
-name = "wgpu-types"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f762cbc08e1a51389859cf9c199c7aef544789cf3510889aab12c607f701604"
-dependencies = [
- "bitflags",
 ]
 
 [[package]]
