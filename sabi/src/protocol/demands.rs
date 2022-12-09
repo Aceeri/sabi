@@ -59,9 +59,7 @@ where
     DEPENDENCY: 'static + Reflect + FromReflect,
 {
     fn build(&self, app: &mut App) {
-        if !app.world.contains_resource::<ReplicateDemands>() {
-            app.world.init_resource::<ReplicateDemands>();
-        }
+        app.world.init_resource::<ReplicateDemands>();
 
         let mut demands = app
             .world
