@@ -315,11 +315,11 @@ pub fn client_update<C>(
 
             if let Some(entity) = server_entities.get(entities, *server_entity) {
                 if let Ok(mut component) = query.get_mut(entity) {
-                    //info!("updating component");
+                    //info!("updating component: {:?}", component.type_name());
                     component.apply(&*reflect_value);
                 } else {
-                    //info!("inserting new component");
                     if let Some(component) = C::from_reflect(&*reflect_value) {
+                        //info!("inserting component: {:?}", component.type_name());
                         commands.entity(entity).insert(component);
                     } else {
                         error!("could not construct value from reflect.");

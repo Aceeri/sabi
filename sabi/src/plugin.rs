@@ -227,7 +227,8 @@ where
         + Clone
         + Default
         + Serialize
-        + for<'de> Deserialize<'de>,
+        + for<'de> Deserialize<'de>
+        + std::fmt::Debug,
 {
     fn build(&self, app: &mut App) {
         app.insert_resource(crate::protocol::interest::InterestsToSend::new());

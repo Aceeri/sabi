@@ -211,7 +211,15 @@ pub fn server_recv_input<I>(
     mut queued_inputs: ResMut<ClientQueuedInputs<I>>,
     mut acks: ResMut<ClientAcks>,
 ) where
-    I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
+    I: 'static
+        + Send
+        + Sync
+        + Component
+        + Clone
+        + Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + Debug,
 {
     queued_inputs.retain(32);
 
@@ -237,12 +245,15 @@ pub fn server_apply_input<I>(
     I: 'static + Send + Sync + Component + Clone + Default + Serialize + for<'de> Deserialize<'de>,
 {
     for (client, entity) in lobby.players.iter() {
-        if let Some(input) = queued_inputs.get(*client, &tick) {
-            if entities.contains(*entity) {
-                commands.entity(*entity).insert(input.clone());
-            }
+        let apply_input = if let Some(input) = queued_inputs.get(*client, &tick) {
+            input.clone()
         } else {
             //error!("no input for player {} on tick {}", client, tick.tick());
+            I::default()
+        };
+
+        if entities.contains(*entity) {
+            commands.entity(*entity).insert(apply_input);
         }
     }
 }
@@ -325,5 +336,6 @@ pub fn client_apply_input_buffer<I>(
         *player_input = input.clone();
     } else {
         //error!("no input: {}", tick.tick());
+        *player_input = I::default();
     }
 }
