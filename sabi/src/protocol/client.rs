@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_renet::renet::{ClientAuthentication, ConnectToken, RenetClient};
+use bevy::ecs::entity::{EntityMap, MapEntitiesError};
 
 use std::error::Error;
 use std::net::{ToSocketAddrs, UdpSocket};
@@ -57,19 +58,19 @@ pub fn client_connected(client: Option<Res<RenetClient>>) -> bool {
 /// Authoritative mapping of server entities to entities for clients.
 ///
 /// This is so clients can figure out which entity the server is talking about.
-#[derive(Resource, Default, Debug, Clone)]
-pub struct ServerEntities(HashMap<ServerEntity, Entity>);
+#[derive(Resource, Default, Debug)]
+pub struct ServerEntities(EntityMap);
 
 impl ServerEntities {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self(Default::default())
     }
 
-    pub fn spawn_or_get(&mut self, commands: &mut Commands, server_entity: ServerEntity) -> Entity {
+    pub fn spawn_or_get(&mut self, commands: &mut Commands, server_entity: Entity) -> Entity {
         match self.0.entry(server_entity) {
             Entry::Occupied(entity) => *entity.get(),
             Entry::Vacant(vacant) => {
-                let new_entity = commands.spawn(server_entity).id();
+                let new_entity = commands.spawn(ServerEntity(server_entity)).id();
                 vacant.insert(new_entity);
                 new_entity
             }
@@ -77,11 +78,11 @@ impl ServerEntities {
     }
 
     pub fn get(&self, entities: &Entities, server_entity: ServerEntity) -> Option<Entity> {
-        let entity = self.0.get(&server_entity).cloned();
-        entity.filter(|entity| entities.contains(*entity))
+        self.0.get(server_entity.0).ok()
     }
 
     pub fn clean(&mut self, entities: &Entities) -> bool {
+        /*
         let mut dead = Vec::new();
         for (server_entity, entity) in self.0.iter() {
             if !entities.contains(*entity) {
@@ -92,16 +93,23 @@ impl ServerEntities {
         for server_entity in dead.iter() {
             self.0.remove(server_entity);
         }
-
         dead.len() > 0
+ */
+false
     }
 
     /// Despawn any server entities
     pub fn disconnect(&mut self, entities: &Entities, commands: &mut Commands) {
+        /*
         for (_server_entity, entity) in self.0.drain() {
             if entities.contains(entity) {
                 commands.entity(entity).despawn_recursive();
             }
         }
+ */
+    }
+
+    pub fn map(&self) -> &EntityMap {
+        &self.0
     }
 }

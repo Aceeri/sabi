@@ -1,6 +1,7 @@
 use std::{marker::PhantomData, time::Duration};
 
 use bevy::prelude::*;
+use bevy::reflect::GetTypeRegistration;
 #[cfg(feature = "public")]
 use bevy_renet::{
     renet::{RenetClient, RenetError, RenetServer},
@@ -30,12 +31,12 @@ use crate::protocol::*;
 #[cfg(feature = "public")]
 pub struct ReplicatePlugin<C>(PhantomData<C>)
 where
-    C: 'static + Component + Reflect + FromReflect + Clone;
+    C: 'static + Component + Reflect + FromReflect + GetTypeRegistration + Clone;
 
 #[cfg(feature = "public")]
 impl<C> Default for ReplicatePlugin<C>
 where
-    C: 'static + Component + Reflect + FromReflect + Clone,
+    C: 'static + Component + Reflect + FromReflect + GetTypeRegistration + Clone,
 {
     fn default() -> Self {
         Self(PhantomData)
@@ -48,9 +49,11 @@ pub struct ServerQueueInterest;
 #[cfg(feature = "public")]
 impl<C> Plugin for ReplicatePlugin<C>
 where
-    C: 'static + Component + Reflect + FromReflect + Clone,
+    C: 'static + Component + Reflect + FromReflect + GetTypeRegistration + Clone,
 {
     fn build(&self, app: &mut App) {
+        app.register_type::<C>();
+
         if app.world.contains_resource::<crate::Server>() {
             app.add_meta_network_system(
                 crate::protocol::update::server_queue_interest::<C>
@@ -132,7 +135,7 @@ where
         }
 
         #[cfg(feature = "public")]
-        app.register_type::<ServerEntity>();
+        //app.register_type::<ServerEntity>();
 
         #[cfg(feature = "public")]
         app.add_event::<(ServerEntity, ComponentsUpdate)>();

@@ -31,8 +31,8 @@ pub struct UpdateMessage {
     pub entity_update: EntityUpdate,
 
     // Clean up stragglers.
-    pub component_despawn: Vec<(ServerEntity, ReplicateId)>,
-    pub entity_despawn: Vec<ServerEntity>,
+    pub component_despawn: Vec<(Entity, ReplicateId)>,
+    pub entity_despawn: Vec<Entity>,
 }
 
 impl UpdateMessage {
@@ -78,7 +78,7 @@ impl ClientEntityUpdates {
 
 #[derive(Resource, Deref, DerefMut, Default, Clone, Serialize, Deserialize)]
 pub struct EntityUpdate {
-    pub updates: BTreeMap<ServerEntity, ComponentsUpdate>,
+    pub updates: BTreeMap<Entity, ComponentsUpdate>,
 }
 
 impl fmt::Debug for EntityUpdate {
@@ -124,11 +124,11 @@ impl EntityUpdate {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&ServerEntity, &ComponentsUpdate)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&Entity, &ComponentsUpdate)> {
         self.updates.iter()
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&ServerEntity, &mut ComponentsUpdate)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Entity, &mut ComponentsUpdate)> {
         self.updates.iter_mut()
     }
 }
@@ -287,7 +287,7 @@ pub fn client_recv_interest(
 pub fn client_apply_server_update(
     tick: Res<NetworkTick>,
     server_updates: Res<UpdateMessages>,
-    mut update_events: EventWriter<(ServerEntity, ComponentsUpdate)>,
+    mut update_events: EventWriter<(Entity, ComponentsUpdate)>,
 ) {
     if let Some(update) = server_updates.get(&*tick) {
         update_events.send_batch(update.entity_update.updates.clone().into_iter());
@@ -354,7 +354,6 @@ pub fn server_queue_interest<C>(
         for (entity, replicate_id) in interests.iter() {
             if *replicate_id == crate::replicate_id::<C>() {
                 if let Ok(component) = query.get(*entity) {
-                    let server_entity = ServerEntity::from_entity(*entity);
                     let serializer = ReflectSerializer::new(component, &type_registry);
                     let component_data = ron::ser::to_string(&serializer).unwrap().into_bytes();
 
@@ -369,7 +368,7 @@ pub fn server_queue_interest<C>(
                     estimate.add(crate::replicate_id::<C>(), component_data.len());
 
                     let update = entity_update
-                        .entry(server_entity)
+                        .entry(*entity)
                         .or_insert(ComponentsUpdate::new());
                     update.insert(crate::replicate_id::<C>(), component_data);
                 }

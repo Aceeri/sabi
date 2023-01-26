@@ -107,11 +107,11 @@ pub struct Owned;
 
 /// Reliable protocol from the server to the clients for communicating the
 /// overall gamestate and assigning what the clients should predict.
-#[derive(Debug, Serialize, Deserialize, Component)]
+#[derive(Debug, Serialize, Deserialize, Component, Reflect, FromReflect)]
 pub enum ServerMessage {
     SetPlayer { id: ClientId },
-    AssignOwnership { entity: ServerEntity },
-    PlayerConnected { id: ClientId, entity: ServerEntity },
+    AssignOwnership { entity: Entity },
+    PlayerConnected { id: ClientId, entity: Entity },
     PlayerDisconnected { id: ClientId },
 }
 
@@ -129,7 +129,6 @@ impl ServerMessage {
 ///
 /// This won't work for P2P kinds of games but for our case its fine.
 #[derive(
-    Default,
     Debug,
     Clone,
     Copy,
@@ -139,17 +138,12 @@ impl ServerMessage {
     PartialOrd,
     Ord,
     Hash,
-    Reflect,
-    FromReflect,
-    Serialize,
-    Deserialize,
 )]
-#[reflect(Component, Hash, PartialEq)]
-pub struct ServerEntity(u32, u32);
+pub struct ServerEntity(Entity);
 
 impl ServerEntity {
     pub fn from_entity(entity: Entity) -> Self {
-        Self(entity.index(), entity.generation())
+        Self(entity)
     }
 }
 
