@@ -338,15 +338,12 @@ pub fn server_clear_queue(mut updates: ResMut<ClientEntityUpdates>) {
     }
 }
 
-pub fn server_queue_interest<C>(
+pub fn server_queue_interest(
     type_registry: Res<AppTypeRegistry>,
     mut estimate: ResMut<ReplicateSizeEstimates>,
     mut updates: ResMut<ClientEntityUpdates>,
     to_send: Res<InterestsToSend>,
-    query: Query<&C>,
-) where
-    C: 'static + Component + Reflect + FromReflect + Clone,
-{
+) {
     let type_registry = type_registry.read();
 
     for (client_id, interests) in to_send.iter() {

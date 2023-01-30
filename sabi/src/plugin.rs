@@ -29,58 +29,41 @@ use crate::prelude::*;
 use crate::protocol::*;
 
 #[cfg(feature = "public")]
-pub struct ReplicatePlugin<C>(PhantomData<C>)
-where
-    C: 'static + Component + Reflect + FromReflect + GetTypeRegistration + Clone;
-
-#[cfg(feature = "public")]
-impl<C> Default for ReplicatePlugin<C>
-where
-    C: 'static + Component + Reflect + FromReflect + GetTypeRegistration + Clone,
-{
-    fn default() -> Self {
-        Self(PhantomData)
-    }
-}
+pub struct ReplicatePlugin;
 
 #[derive(SystemLabel, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ServerQueueInterest;
 
 #[cfg(feature = "public")]
-impl<C> Plugin for ReplicatePlugin<C>
-where
-    C: 'static + Component + Reflect + FromReflect + GetTypeRegistration + Clone,
-{
+impl Plugin for ReplicatePlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<C>();
-
         if app.world.contains_resource::<crate::Server>() {
             app.add_meta_network_system(
-                crate::protocol::update::server_queue_interest::<C>
+                crate::protocol::update::server_queue_interest
                     .before("server_send_interest")
                     .after("queue_interests"),
             );
 
-            app.add_meta_network_system(crate::protocol::interest::component_changes::<C>);
+            app.add_meta_network_system(crate::protocol::interest::component_changes);
 
             app.add_meta_network_system(
-                crate::protocol::interest::baseload_components::<C>.before("clear_baseload"),
+                crate::protocol::interest::baseload_components.before("clear_baseload"),
             );
         }
 
         if app.world.contains_resource::<crate::Client>() {
-            app.insert_resource(SnapshotBuffer::<C>::new());
+            app.insert_resource(SnapshotBuffer::new());
             app.add_update_history_network_system(
-                crate::protocol::update::client_update::<C>.after("client_apply_server_update"),
+                crate::protocol::update::client_update.after("client_apply_server_update"),
             );
 
             app.add_meta_network_system(
-                crate::protocol::resim::store_snapshot::<C>
+                crate::protocol::resim::store_snapshot
                     .run_if_resource_exists::<RenetClient>()
                     .run_if_resource_exists::<NetworkTick>()
                     .run_if(client_connected),
             );
-            app.add_rewind_network_system(crate::protocol::resim::rewind::<C>);
+            app.add_rewind_network_system(crate::protocol::resim::rewind);
         }
     }
 }

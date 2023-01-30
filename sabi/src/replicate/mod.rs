@@ -121,7 +121,7 @@ impl ReplicateId {
 /// If this file is cleared then it may not be the same in the next build.
 pub fn replicate_id<T>() -> ReplicateId
 where
-    T: 'static + Reflect + FromReflect,
+    T: 'static + Reflect,
 {
     let long_id = std::any::type_name::<T>().to_owned();
 
